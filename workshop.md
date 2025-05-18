@@ -53,7 +53,7 @@ graph LR
     
     class Agent1,Agent2,Agent3 agent;
     
-    classDef agent fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef agent fill:#d070d0,stroke:#333,stroke-width:2px,color:#fff;
 ```
 
 #### Slide 5: MCP Explained
@@ -86,7 +86,7 @@ graph LR
     
     class AI,MCP connector;
     
-    classDef connector fill:#bbf,stroke:#33f,stroke-width:2px;
+    classDef connector fill:#7070d0,stroke:#333,stroke-width:2px,color:#fff;
 ```
 
 #### Slide 6: When to Use A2A vs. MCP
@@ -128,9 +128,9 @@ graph TD
     class Zapier middleware;
     class SlackAPI,GitHubAPI,SalesforceAPI external;
     
-    classDef agent fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef middleware fill:#bbf,stroke:#33f,stroke-width:2px;
-    classDef external fill:#bfb,stroke:#3f3,stroke-width:2px;
+    classDef agent fill:#d070d0,stroke:#333,stroke-width:2px,color:#fff;
+    classDef middleware fill:#7070d0,stroke:#333,stroke-width:2px,color:#fff;
+    classDef external fill:#70b070,stroke:#333,stroke-width:2px,color:#fff;
 ```
 
 #### Slide 8: Code Structure Overview
@@ -260,7 +260,7 @@ graph TD
     
     class Host,SlackAgent,GitHubAgent,SalesforceAgent agent;
     
-    classDef agent fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef agent fill:#d070d0,stroke:#333,stroke-width:2px,color:#fff;
 ```
 
 #### Slide 19: Host Agent Code Walkthrough
@@ -423,8 +423,8 @@ graph TD
     class Host,SlackAgent,GitHubAgent,SalesforceAgent existing;
     class EmailAgent,CalendarAgent,WeatherAgent,DatabaseAgent new;
     
-    classDef existing fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef new fill:#bbf,stroke:#33f,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef existing fill:#d070d0,stroke:#333,stroke-width:2px,color:#fff;
+    classDef new fill:#7070d0,stroke:#333,stroke-width:2px,color:#fff,stroke-dasharray: 5 5;
 ```
 
 #### Slide 30: Resources and Next Steps

@@ -54,9 +54,9 @@ graph TD
     class Zapier middleware;
     class SlackAPI,GitHubAPI,SalesforceAPI external;
     
-    classDef agent fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef middleware fill:#bbf,stroke:#33f,stroke-width:2px;
-    classDef external fill:#bfb,stroke:#3f3,stroke-width:2px;
+    classDef agent fill:#d070d0,stroke:#333,stroke-width:2px,color:#fff;
+    classDef middleware fill:#7070d0,stroke:#333,stroke-width:2px,color:#fff;
+    classDef external fill:#70b070,stroke:#333,stroke-width:2px,color:#fff;
 ```
 
 ### Slack Agent Flow
@@ -110,7 +110,7 @@ graph LR
     
     class AI,MCP connector;
     
-    classDef connector fill:#bbf,stroke:#33f,stroke-width:2px;
+    classDef connector fill:#7070d0,stroke:#333,stroke-width:2px,color:#fff;
 ```
 
 ## Prerequisites
