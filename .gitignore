@@ -8,3 +8,4 @@ dist
 src/test/output
 .env
 .DS_Store
+*.pid

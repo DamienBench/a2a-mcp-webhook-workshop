@@ -1,22 +1,36 @@
-# A2A-MCP Integration
+# A2A-MCP Integration Workshop
 
-This project demonstrates the integration of the Agent-to-Agent (A2A) communication framework with the Model Context Protocol (MCP).
+This project demonstrates how to build a multi-agent system using Agent-to-Agent (A2A) communication with the Model Context Protocol (MCP).
 
 ## Overview
 
-The project includes three agent implementations:
+The repository contains:
 
-- **Slack Agent**: Send messages to Slack channels
-- **GitHub Agent**: Create and manage GitHub issues
-- **Salesforce Agent**: Create, find, and update Salesforce records
+1. A Host Agent that intelligently routes user requests to specialized sub-agents
+2. Three specialized agents:
+   - **Slack Agent**: Send messages to Slack channels
+   - **GitHub Agent**: Create issues in GitHub repositories
+   - **Salesforce Agent**: Create, find, and update Salesforce records
 
-Each agent is implemented using MCP tools for better interoperability and structured interaction with foundational models.
+Each agent connects to its respective service via the Zapier MCP Server, allowing seamless integration without direct API access.
 
-## Project Structure
+## Architecture
 
-- `src/agents/` - Contains implementations for each agent
-- `src/mcp/` - MCP tool implementations for each platform
-- `src/test/` - Test scripts and utilities for all agents
+```
+┌─────────────┐     ┌───────────────┐
+│             │     │ Slack Agent   │
+│             ├────►│ (Port 41243)  │──► Slack Channels
+│ Host Agent  │     └───────────────┘
+│ (Port 41240)│     ┌───────────────┐
+│             ├────►│ GitHub Agent  │──► GitHub Issues
+│  CLI        │     │ (Port 41245)  │
+│  Interface  │     └───────────────┘
+│             │     ┌───────────────┐
+│             ├────►│ Salesforce    │──► Salesforce
+└─────────────┘     │ Agent         │    Records
+                    │ (Port 41244)  │
+                    └───────────────┘
+```
 
 ## Getting Started
 
@@ -25,39 +39,90 @@ Each agent is implemented using MCP tools for better interoperability and struct
    ```bash
    npm install
    ```
-3. Create a `.env` file with the required API keys:
+3. Configure your `.env` file with:
    ```
+   MCP_SERVER_URL=your_zapier_mcp_server_url
    GEMINI_API_KEY=your_gemini_api_key
-   SLACK_TOKEN=your_slack_token
-   GITHUB_TOKEN=your_github_token
-   MCP_SERVER_URL=your_mcp_server_url
    ```
 
-## Running Tests
+## Running the Agents
 
-### Individual Agent Tests
-
-```bash
-# Test Slack agent
-./src/test/test-slack-agent.sh
-
-# Test GitHub agent 
-./src/test/test-github-agent.sh
-
-# Test Salesforce agent
-./src/test/test-salesforce-agent.sh
-```
-
-### Multi-Agent Integration Test
-
-The bench test simulates a sales discovery call and demonstrates how all three agents can work together:
+### Start All Agents
 
 ```bash
-./src/test/run-bench-test.sh
+npm run start:all
 ```
 
-For more information about the test scripts, see [Test Documentation](src/test/README.md).
+This starts:
+- Host Agent on port 41240
+- Slack Agent on port 41243
+- GitHub Agent on port 41245
+- Salesforce Agent on port 41244
 
-## License
+All agents run in the background, with logs stored in the `logs/` directory.
 
-This project is sample code and not production-quality libraries.
+### Chat with the Host Agent
+
+After starting all agents, you can interact with the system through the Host Agent:
+
+```bash
+npm run a2a:cli
+```
+
+The Host Agent intelligently routes your requests to the appropriate specialized agent:
+
+Example prompts:
+- **Slack**: "Send a message to the #general channel saying Hello world"
+- **GitHub**: "Create a GitHub issue in myrepo with title 'Bug Report'"
+- **Salesforce**: "Create a new Contact in Salesforce with name John Smith"
+- **Multiple Services**: "Send hi to Slack and create a GitHub issue about the message"
+
+### Stop All Agents
+
+To stop all running agents:
+
+```bash
+npm run stop:all
+```
+
+### Run Individual Agents
+
+You can also run and test agents individually:
+
+```bash
+# Run Host agent only
+npm run host:agent
+
+# Run Slack agent with direct message
+npm run agent:slack "Send a message to #general saying Hello"
+
+# Run GitHub agent with direct message
+npm run agent:github "Create an issue in repo/name with title 'Test'"
+
+# Run Salesforce agent with direct message
+npm run agent:salesforce "Create a Contact with FirstName John LastName Doe"
+```
+
+## Testing
+
+Individual agent tests:
+
+```bash
+npm run test:slack
+npm run test:github
+npm run test:salesforce
+```
+
+Test the Host Agent with all sub-agents:
+
+```bash
+npm run test:host
+```
+
+## Agent Documentation
+
+Each agent has its own detailed documentation:
+- [Host Agent](src/host/README.md)
+- [Slack Agent](src/agents/slack/README.md)
+- [GitHub Agent](src/agents/github/README.md)
+- [Salesforce Agent](src/agents/salesforce/README.md)

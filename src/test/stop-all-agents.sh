@@ -2,18 +2,54 @@
 
 # Script to stop all running agents
 
-# Function to check if a process is running on a specific port
-function is_port_in_use {
-  lsof -i:$1 > /dev/null 2>&1
-  return $?
+# Change to the project root directory
+cd "$(dirname "$0")/../.."
+
+echo "Stopping all agents..."
+
+# Function to stop an agent using its PID file
+function stop_agent() {
+  local agent_name="$1"
+  local pid_file="logs/${agent_name}-agent.pid"
+  
+  if [ -f "$pid_file" ]; then
+    local pid=$(cat "$pid_file")
+    if ps -p $pid > /dev/null; then
+      echo "Stopping $agent_name Agent (PID: $pid)..."
+      kill $pid
+      sleep 1
+      
+      # Check if it's still running and force kill if necessary
+      if ps -p $pid > /dev/null; then
+        echo "Force killing $agent_name Agent..."
+        kill -9 $pid
+      fi
+      
+      echo "$agent_name Agent stopped."
+      rm "$pid_file"
+    else
+      echo "$agent_name Agent not running (PID $pid not found)."
+      rm "$pid_file"
+    fi
+  else
+    echo "No PID file found for $agent_name Agent."
+    
+    # Fallback to port-based killing for the specific agent
+    case "$agent_name" in
+      "slack")     kill_port 41243 "Slack" ;;
+      "salesforce") kill_port 41244 "Salesforce" ;;
+      "github")    kill_port 41245 "GitHub" ;;
+      "host")      kill_port 41241 "Host" ;;
+    esac
+  fi
 }
 
-# Function to kill a process running on a specific port
+# Function to kill a process running on a specific port (fallback method)
 function kill_port {
   local port=$1
   local agent_name=$2
   
-  if is_port_in_use $port; then
+  if lsof -i:$port > /dev/null 2>&1; then
     local pid=$(lsof -t -i:$port)
     if [ ! -z "$pid" ]; then
       echo "Stopping $agent_name Agent (PID: $pid) on port $port..."
@@ -21,7 +57,7 @@ function kill_port {
       sleep 1
       
       # Check if it's still running and force kill if necessary
-      if is_port_in_use $port; then
+      if lsof -i:$port > /dev/null 2>&1; then
         echo "Force killing $agent_name Agent..."
         kill -9 $pid
       fi
@@ -35,14 +71,10 @@ function kill_port {
   fi
 }
 
-# Directory of the script
-cd "$(dirname "$0")/../.."
-
-echo "Stopping all agents..."
-
-# Stop each agent by port
-kill_port 41243 "Slack"
-kill_port 41244 "Salesforce"
-kill_port 41245 "GitHub"
+# Stop each agent using its PID file
+stop_agent "slack"
+stop_agent "salesforce"
+stop_agent "github"
+stop_agent "host"
 
 echo "All agents stopped." 

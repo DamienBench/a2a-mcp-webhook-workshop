@@ -1,57 +1,51 @@
-# A2A Server (JS)
+# Host A2A Agent
 
-This directory contains a TypeScript server implementation for the Agent-to-Agent (A2A) communication protocol, built using Express.js.
+This is the main Host Agent that routes user requests to the appropriate specialized agents (Slack, GitHub, Salesforce).
 
-## Basic Usage (Conceptual)
+## Setup
 
-```typescript
-import {
-  A2AServer,
-  InMemoryTaskStore,
-  TaskContext,
-  TaskYieldUpdate,
-} from "./index"; // Assuming imports from the server package
-
-// 1. Define your agent's logic as a TaskHandler
-async function* myAgentLogic(
-  context: TaskContext
-): AsyncGenerator<TaskYieldUpdate> {
-  console.log(`Handling task: ${context.task.id}`);
-  yield {
-    state: "working",
-    message: { role: "agent", parts: [{ text: "Processing..." }] },
-  };
-
-  // Simulate work...
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  if (context.isCancelled()) {
-    console.log("Task cancelled!");
-    yield { state: "canceled" };
-    return;
-  }
-
-  // Yield an artifact
-  yield {
-    name: "result.txt",
-    mimeType: "text/plain",
-    parts: [{ text: `Task ${context.task.id} completed.` }],
-  };
-
-  // Yield final status
-  yield {
-    state: "completed",
-    message: { role: "agent", parts: [{ text: "Done!" }] },
-  };
-}
-
-// 2. Create and start the server
-const store = new InMemoryTaskStore(); // Or new FileStore()
-const server = new A2AServer(myAgentLogic, { taskStore: store });
-
-server.start(); // Starts listening on default port 41241
-
-console.log("A2A Server started.");
+Ensure you have the MCP Server URL configured in your `.env` file:
+```
+MCP_SERVER_URL=your_zapier_mcp_server_url
 ```
 
-This server implementation provides a foundation for building A2A-compliant agents in TypeScript.
+## Usage
+
+Start the Host Agent:
+
+```bash
+npm run host:agent
+```
+
+To chat with the Host Agent, use the CLI:
+
+```bash
+npm run a2a:cli
+```
+
+Example prompts:
+- "Send a message to #general in Slack saying Hello world"
+- "Create a GitHub issue in owner/repo with title 'Bug Report' and description 'Please fix this'"
+- "Create a new Contact in Salesforce with FirstName 'John' and LastName 'Smith'"
+
+## Starting All Agents
+
+For the Host Agent to work properly, all sub-agents need to be running. You can start all agents (including the Host Agent) with:
+
+```bash
+npm run start:all
+```
+
+To stop all running agents:
+
+```bash
+npm run stop:all
+```
+
+## Testing
+
+Test the Host Agent with all sub-agents:
+
+```bash
+npm run test:host
+```

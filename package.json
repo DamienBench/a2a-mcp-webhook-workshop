@@ -1,5 +1,5 @@
 {
-  "name": "a2a-samples-js",
+  "name": "a2a-mcp-webhook-workshop",
   "version": "0.1.0",
   "main": "dist/index.js",
   "type": "module",
@@ -9,9 +9,18 @@
     "typescript": "^5.8.2"
   },
   "scripts": {
-    "a2a:cli": "npx tsx src/cli.ts",
-    "agents:movie-agent": "npx tsx src/agents/movie-agent/index.ts",
-    "agents:coder": "npx tsx src/agents/coder/index.ts"
+    "a2a:cli": "npx tsx src/cli.ts http://localhost:41240",
+    "host:agent": "npx tsx src/host/index.ts",
+    "agent:slack": "npx tsx src/agents/slack/index.ts",
+    "agent:github": "npx tsx src/agents/github/index.ts",
+    "agent:salesforce": "npx tsx src/agents/salesforce/index.ts",
+    "test:slack": "bash src/test/test-slack-agent.sh",
+    "test:github": "bash src/test/test-github-agent.sh",
+    "test:salesforce": "bash src/test/test-salesforce-agent.sh",
+    "test:host": "bash src/test/test-host-agent.sh",
+    "start:all": "bash src/test/start-all-agents.sh",
+    "stop:all": "bash src/test/stop-all-agents.sh",
+    "build": "tsc"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.9.0",
