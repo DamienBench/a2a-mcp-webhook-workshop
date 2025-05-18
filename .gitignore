@@ -1,0 +1,10 @@
+node_modules
+.genkit
+.firebase
+.a2a-tasks
+*.log
+
+dist
+src/test/output
+.env
+.DS_Store
