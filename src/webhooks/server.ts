@@ -197,6 +197,13 @@ export class WebhookServer {
       : this.hostAgentClient;
     
     try {
+      // Add explicit logging for config and processorConfig
+      console.log('CONFIG DEBUG: Full webhook config:', JSON.stringify(config, null, 2));
+      console.log('CONFIG DEBUG: processorConfig:', JSON.stringify(config.processorConfig, null, 2));
+      if (config.processorConfig && 'parallel' in config.processorConfig) {
+        console.log('CONFIG DEBUG: parallel setting:', config.processorConfig.parallel);
+      }
+      
       // Create task parameters
       const params = {
         id: `webhook-${config.id}-${Date.now()}`,
@@ -208,11 +215,15 @@ export class WebhookServer {
               type: 'webhook',
               webhookId: config.id,
               webhookName: config.name,
+              processorConfig: config.processorConfig || {}, // Include the processor configuration
               data
             })
           }]
         }
       };
+      
+      // Log what we're sending to the host agent
+      console.log('CONFIG DEBUG: Sending to host agent:', JSON.stringify(params.message.parts[0].text, null, 2));
       
       // Send task to host agent - add timeout and error handling
       try {

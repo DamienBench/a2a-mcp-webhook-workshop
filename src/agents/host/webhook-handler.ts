@@ -76,6 +76,14 @@ function extractTasksFromTranscript(transcript: string): Record<string, string> 
 export async function processWebhookData(webhookData: any): Promise<{success: boolean, results: Record<string, any>}> {
   console.log('Processing webhook data:', JSON.stringify(webhookData, null, 2));
   
+  // Add explicit debug logging for processorConfig
+  console.log('DEBUG - processorConfig:', JSON.stringify(webhookData.processorConfig || {}, null, 2));
+  if (webhookData.processorConfig) {
+    console.log('DEBUG - parallel setting:', webhookData.processorConfig.parallel);
+  } else {
+    console.log('DEBUG - processorConfig is missing from webhookData');
+  }
+  
   try {
     // Extract whatever webhook ID we can from the data
     const webhookId = webhookData.webhookId || 'unknown';
@@ -111,7 +119,11 @@ export async function processWebhookData(webhookData: any): Promise<{success: bo
       }
       
       if (transcript) {
-        return await processMeetingTranscript(transcript);
+        // Check if parallel execution is enabled
+        const runParallel = webhookData.processorConfig?.parallel !== false;
+        console.log(`Using ${runParallel ? 'parallel' : 'sequential'} execution mode for agent requests`);
+        
+        return await processMeetingTranscript(transcript, runParallel);
       } else {
         console.log('Could not extract transcript from webhook data');
         return { success: false, results: {} };
@@ -133,7 +145,9 @@ export async function processWebhookData(webhookData: any): Promise<{success: bo
       }
       
       // For now, just process it as a meeting transcript
-      return await processMeetingTranscript(rawData);
+      // Default to sequential mode for unknown webhook types
+      const runParallel = webhookData.processorConfig?.parallel !== false;
+      return await processMeetingTranscript(rawData, runParallel);
     }
   } catch (error) {
     console.error('Error processing webhook data:', error);
@@ -144,23 +158,55 @@ export async function processWebhookData(webhookData: any): Promise<{success: bo
 /**
  * Process a meeting transcript
  */
-async function processMeetingTranscript(transcript: string): Promise<{success: boolean, results: Record<string, any>}> {
-  console.log('Processing meeting transcript');
+async function processMeetingTranscript(transcript: string, runParallel: boolean = true): Promise<{success: boolean, results: Record<string, any>}> {
+  console.log(`Processing meeting transcript (mode: ${runParallel ? 'parallel' : 'sequential'})`);
   
   try {
     // Extract tasks for each agent
     const tasks = extractTasksFromTranscript(transcript);
     const results: Record<string, any> = {};
     
-    // Send tasks to each agent
-    for (const [agentType, message] of Object.entries(tasks)) {
-      try {
-        console.log(`Sending task to ${agentType} agent`);
-        const result = await sendRequestToAgent(agentType as keyof typeof agentUrls, message);
+    if (runParallel) {
+      // PARALLEL MODE: Use Promise.all to process all agents concurrently
+      console.log('Running sub-agent calls in parallel mode');
+      
+      // Create an array of promises for parallel execution
+      const agentPromises = Object.entries(tasks).map(async ([agentType, message]) => {
+        try {
+          console.log(`Sending task to ${agentType} agent`);
+          const result = await sendRequestToAgent(agentType as keyof typeof agentUrls, message);
+          return { agentType, result, success: true };
+        } catch (error) {
+          console.error(`Error sending task to ${agentType} agent:`, error);
+          return { 
+            agentType, 
+            result: { success: false, error: String(error), files: new Map<string, string>() },
+            success: false 
+          };
+        }
+      });
+      
+      // Wait for all agent requests to complete in parallel
+      const agentResults = await Promise.all(agentPromises);
+      
+      // Collect results
+      for (const { agentType, result } of agentResults) {
         results[agentType] = result;
-      } catch (error) {
-        console.error(`Error sending task to ${agentType} agent:`, error);
-        results[agentType] = { success: false, error: String(error) };
+      }
+    } else {
+      // SEQUENTIAL MODE: Process each agent in sequence
+      console.log('Running sub-agent calls in sequential mode');
+      
+      // Send tasks to each agent sequentially
+      for (const [agentType, message] of Object.entries(tasks)) {
+        try {
+          console.log(`Sending task to ${agentType} agent`);
+          const result = await sendRequestToAgent(agentType as keyof typeof agentUrls, message);
+          results[agentType] = result;
+        } catch (error) {
+          console.error(`Error sending task to ${agentType} agent:`, error);
+          results[agentType] = { success: false, error: String(error) };
+        }
       }
     }
     

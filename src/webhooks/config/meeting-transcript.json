@@ -4,6 +4,7 @@
   "description": "Processes meeting transcripts and extracts tasks for different agents",
   "processor": "meeting-transcript",
   "processorConfig": {
+    "parallel": false,
     "agents": [
       {
         "id": "github",

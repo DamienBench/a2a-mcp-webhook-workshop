@@ -1,0 +1,11 @@
+{
+  "operation": "create",
+  "objectType": "Lead",
+  "fields": {
+    "name": "Jennifer Williams",
+    "company": "Bench"
+  },
+  "id": "00QgK000001dLiLUAU",
+  "timestamp": "2025-05-18T10:50:10.237Z",
+  "success": true
+}
