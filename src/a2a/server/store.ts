@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import * as schema from "../schema.js";
+import * as schema from "../../schema.js";
 import { A2AError } from "./error.js";
 import {
   getCurrentTimestamp,

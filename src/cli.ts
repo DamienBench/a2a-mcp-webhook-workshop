@@ -2,7 +2,7 @@
 
 import readline from "node:readline";
 import crypto from "node:crypto";
-import { A2AClient } from "./client/client.js";
+import { A2AClient } from "./a2a/client/client.js";
 import {
   // Specific Params/Payload types used by the CLI
   TaskSendParams,

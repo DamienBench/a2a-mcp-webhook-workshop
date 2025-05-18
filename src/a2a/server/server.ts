@@ -5,7 +5,7 @@ import express, {
   RequestHandler,
 } from "express";
 import cors, { CorsOptions } from "cors";
-import * as schema from "../schema.js";
+import * as schema from "../../schema.js";
 // Import TaskAndHistory along with TaskStore implementations
 import { TaskStore, InMemoryTaskStore, TaskAndHistory } from "./store.js";
 // Import TaskHandler and the original TaskContext to derive the new one
@@ -272,6 +272,7 @@ export class A2AServer {
           role: "agent",
           parts: [
             {
+              type: "text",
               text: `Handler failed: ${
                 handlerError instanceof Error
                   ? handlerError.message
@@ -440,6 +441,7 @@ export class A2AServer {
           role: "agent",
           parts: [
             {
+              type: "text",
               text: `Handler failed: ${
                 handlerError instanceof Error
                   ? handlerError.message
@@ -528,7 +530,7 @@ export class A2AServer {
       state: "canceled",
       message: {
         role: "agent",
-        parts: [{ text: "Task cancelled by request." }],
+        parts: [{ type: "text", text: "Task cancelled by request." }],
       },
     };
     data = this.applyUpdateToTaskAndHistory(data, cancelUpdate);

@@ -240,7 +240,7 @@ npm run test:host
 ## Agent Documentation
 
 Each agent has its own detailed documentation:
-- [Host Agent](src/host/README.md)
+- [Host Agent](src/agents/host/README.md)
 - [Slack Agent](src/agents/slack/README.md)
 - [GitHub Agent](src/agents/github/README.md)
 - [Salesforce Agent](src/agents/salesforce/README.md)

@@ -1,0 +1,520 @@
+:root {
+  --matrix-green: #3a9c5a;
+  --matrix-dark-green: #0A3622;
+  --matrix-lighter-green: #4DCCAA;
+  --dark-bg: #121212;
+  --darker-bg: #0a0a0a;
+  --card-bg: #1e1e1e;
+  --card-header-bg: #2c2c2c;
+  --text-color: #e0e0e0;
+  --muted-text: #a0a0a0;
+  --border-color: #333;
+  --terminal-text: #33aa66;
+  --card-description: #c0c0c0;
+  --stats-bg: #2a2a2a;
+  --stats-card-bg: #141414;
+  --stats-number: #ffffff;
+  --stats-label: #e0e0e0;
+  --stats-header-bg: #333;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--dark-bg);
+  color: var(--text-color);
+  padding: 0;
+  margin: 0;
+  overflow-x: hidden;
+  min-height: 100vh;
+  padding-top: 56px;
+}
+
+.layout-container {
+  display: flex;
+  min-height: calc(100vh - 56px);
+  position: relative;
+}
+
+.side-panel {
+  width: 260px;
+  background-color: var(--darker-bg);
+  border-right: 1px solid var(--border-color);
+  padding: 0;
+  overflow-y: auto;
+  height: calc(100vh - 56px);
+  position: fixed;
+  top: 56px;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 260px;
+  padding: 20px;
+  height: calc(100vh - 56px);
+  overflow-y: auto;
+}
+
+.terminal {
+  background-color: #000;
+  border-radius: 6px;
+  padding: 0;
+  font-family: 'Courier New', monospace;
+  color: var(--terminal-text);
+  height: calc(100vh - 150px);
+  overflow-y: auto;
+  margin-top: 20px;
+  border: 1px solid var(--matrix-dark-green);
+  white-space: pre-wrap;
+  word-break: break-word;
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-content {
+  padding: 6px 10px;
+  padding-top: 0;
+  margin-top: 0;
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+}
+
+.terminal-line {
+  margin: 0;
+  padding: 0;
+  line-height: 1.3;
+}
+
+.terminal-line:first-child {
+  margin-top: 6px;
+}
+
+/* JSON Highlighting Styles */
+.terminal-line pre {
+  margin: 2px 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border: none;
+  font-family: 'Courier New', monospace;
+  font-size: inherit;
+  display: block;
+}
+
+.terminal-line pre code {
+  background: transparent !important;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Courier New', monospace;
+}
+
+.terminal-line .hljs {
+  background: rgba(30, 30, 30, 0.3);
+  border-radius: 3px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  padding: 6px;
+  max-height: none;
+  overflow: visible;
+  border-left: 2px solid var(--matrix-green);
+}
+
+/* Custom JSON highlighting colors to match terminal */
+.hljs-attr {
+  color: #56b6c2; /* JSON property names */
+  font-weight: bold;
+}
+
+.hljs-string {
+  color: #98c379; /* JSON string values */
+}
+
+.hljs-number {
+  color: #d19a66; /* JSON numeric values */
+}
+
+.hljs-literal {
+  color: #e06c75; /* JSON booleans and null */
+}
+
+.hljs-punctuation {
+  color: #abb2bf; /* Braces, brackets, commas */
+}
+
+.agent-item {
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.agent-item:hover {
+  background-color: rgba(10, 54, 34, 0.5);
+}
+
+.agent-item.active {
+  background-color: var(--matrix-dark-green);
+  border-left: 3px solid var(--matrix-green);
+  font-weight: bold;
+}
+
+.agent-status, .status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.status-active {
+  background-color: var(--matrix-green);
+}
+
+.status-inactive {
+  background-color: #ff4d4d;
+}
+
+.navbar {
+  background-color: var(--darker-bg) !important;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+  z-index: 1030;
+}
+
+.navbar-brand {
+  color: var(--matrix-green) !important;
+  font-weight: 600;
+}
+
+.nav-link {
+  color: var(--text-color) !important;
+}
+
+.nav-link.active {
+  color: var(--matrix-green) !important;
+  border-bottom: 2px solid var(--matrix-green);
+}
+
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.card-header {
+  font-weight: 600;
+  background-color: var(--card-header-bg);
+  color: var(--text-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 16px;
+  font-size: 16px;
+}
+
+.card-text {
+  color: var(--card-description);
+}
+
+.webhook-url {
+  font-family: 'Courier New', monospace;
+  background-color: #000;
+  color: var(--terminal-text);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin-top: 10px;
+}
+
+.card-body {
+  background-color: var(--card-bg);
+}
+
+.card .badge {
+  background-color: var(--matrix-dark-green) !important;
+  color: var(--text-color) !important;
+  font-weight: normal;
+  padding: 5px 8px;
+}
+
+pre {
+  background-color: #000;
+  border-radius: 4px;
+  padding: 10px;
+  color: var(--terminal-text);
+}
+
+#jsonEditor {
+  width: 100%;
+  height: 300px;
+  font-family: 'Courier New', monospace;
+  background-color: #000;
+  color: var(--terminal-text);
+  border: 1px solid var(--matrix-dark-green);
+}
+
+textarea, input, select {
+  background-color: #272727 !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-color) !important;
+}
+
+.btn-primary {
+  background-color: var(--matrix-dark-green) !important;
+  border-color: var(--matrix-green) !important;
+  color: var(--matrix-green) !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--matrix-dark-green) !important;
+  filter: brightness(120%);
+}
+
+.btn-outline-primary {
+  color: var(--matrix-green) !important;
+  border-color: var(--matrix-green) !important;
+  background-color: transparent !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: rgba(0, 255, 65, 0.1) !important;
+}
+
+.btn-secondary {
+  background-color: #444 !important;
+  border-color: #555 !important;
+}
+
+.btn-danger {
+  background-color: #5a0000 !important;
+  border-color: #ff4d4d !important;
+  color: #ff4d4d !important;
+}
+
+.modal-content {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+}
+
+.modal-header, .modal-footer {
+  border-color: var(--border-color);
+}
+
+.form-text {
+  color: var(--muted-text) !important;
+}
+
+/* Pulse animation for active status */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.7); }
+  70% { box-shadow: 0 0 0 5px rgba(0, 255, 65, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0); }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Matrix rain effect for terminal */
+.matrix-rain {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.15;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.matrix-rain canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Terminal container structure */
+.terminal-container {
+  position: relative;
+}
+
+/* Auto-scroll paused indicator */
+.auto-scroll-paused {
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--matrix-green);
+  color: var(--matrix-green);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 5;
+}
+
+.resume-btn {
+  background-color: var(--matrix-dark-green);
+  color: var(--text-color);
+  border: none;
+  padding: 2px 8px;
+  border-radius: 3px;
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.resume-btn:hover {
+  background-color: var(--matrix-green);
+  color: #000;
+}
+
+.agent-card {
+  transition: transform 0.2s;
+}
+
+.agent-card:hover {
+  transform: translateY(-5px);
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table-dark {
+  background-color: var(--darker-bg);
+  color: var(--text-color);
+}
+
+.table-dark tbody tr:hover {
+  background-color: var(--matrix-dark-green);
+}
+
+.table-dark th, .table-dark td {
+  border-color: var(--border-color);
+  padding: 10px 12px;
+}
+
+/* Statistics Dashboard Styling */
+#webhook-stats .card {
+  background-color: var(--stats-bg);
+  border-radius: 8px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+#webhook-stats .card-header {
+  background-color: var(--stats-header-bg);
+  color: var(--matrix-lighter-green);
+  font-weight: 600;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
+  padding: 14px 16px;
+}
+
+#webhook-stats .card-body {
+  background-color: var(--stats-bg);
+  padding: 20px;
+}
+
+#webhook-stats .bg-dark {
+  background-color: var(--stats-card-bg) !important;
+  border-radius: 5px;
+  transition: transform 0.2s;
+}
+
+#webhook-stats .bg-dark:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+#webhook-stats h2, 
+#webhook-stats h3 {
+  color: var(--stats-number);
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 32px;
+}
+
+#webhook-stats h3 {
+  font-size: 26px;
+}
+
+#webhook-stats p {
+  color: var(--stats-label);
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 5px;
+}
+
+#webhook-stats h5 {
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 18px;
+  margin-bottom: 15px;
+}
+
+#webhook-stats .table-dark {
+  background-color: transparent;
+}
+
+#webhook-stats .table-dark thead th {
+  background-color: var(--stats-header-bg);
+  color: var(--text-color);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  border-top: none;
+}
+
+#webhook-stats .table-dark tbody td {
+  color: var(--text-color);
+  font-size: 14px;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+#webhook-stats .badge {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+#webhook-stats .badge.bg-success {
+  background-color: var(--matrix-dark-green) !important;
+  color: var(--matrix-lighter-green) !important;
+}
+
+#webhook-stats .row {
+  margin-left: -10px;
+  margin-right: -10px;
+}
+
+#webhook-stats .col-md-3,
+#webhook-stats .col-md-9,
+#webhook-stats .col-md-12 {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+/* Set initial display state for sections */
+#agent-terminal, #webhooks, #test {
+  display: none;
+}
+
+/* Dashboard will be shown by default */
+#agent-terminal {
+  display: block;
+} 

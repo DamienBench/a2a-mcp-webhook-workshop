@@ -33,7 +33,7 @@ import {
   // Streaming Payload types (used in public method yield signatures)
   TaskStatusUpdateEvent,
   TaskArtifactUpdateEvent,
-} from "../schema.js";
+} from "../../schema.js";
 
 // Simple error class for client-side representation of JSON-RPC errors
 class RpcError extends Error {

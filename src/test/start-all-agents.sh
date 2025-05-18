@@ -34,7 +34,7 @@ function start_agent() {
 }
 
 # First start the Host Agent
-start_agent "host" "41241" "npx tsx src/host/index.ts"
+start_agent "host" "41241" "npx tsx src/agents/host/index.ts"
 sleep 2  # Give the Host Agent a moment to start
 
 # Then start the sub-agents
@@ -42,6 +42,10 @@ start_agent "slack" "41243" "npx tsx src/agents/slack/index.ts"
 start_agent "salesforce" "41244" "npx tsx src/agents/salesforce/index.ts"
 start_agent "github" "41245" "npx tsx src/agents/github/index.ts"
 
-echo "Host Agent and all sub-agents started in the background."
+# Finally start the webhook server
+start_agent "webhook" "3000" "npx tsx src/webhooks/index.ts"
+
+echo "Host Agent, all sub-agents, and webhook server started in the background."
 echo "To chat with the Host Agent, run: npm run a2a:cli"
+echo "To test the webhook server, run: npm run test:webhook"
 echo "To stop all agents, run: npm run stop:all" 

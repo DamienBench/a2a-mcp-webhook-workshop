@@ -10,14 +10,16 @@
   },
   "scripts": {
     "a2a:cli": "npx tsx src/cli.ts http://localhost:41240",
-    "host:agent": "npx tsx src/host/index.ts",
+    "host:agent": "npx tsx src/agents/host/index.ts",
     "agent:slack": "npx tsx src/agents/slack/index.ts",
     "agent:github": "npx tsx src/agents/github/index.ts",
     "agent:salesforce": "npx tsx src/agents/salesforce/index.ts",
+    "webhook:server": "npx tsx src/webhooks/index.ts",
     "test:slack": "bash src/test/test-slack-agent.sh",
     "test:github": "bash src/test/test-github-agent.sh",
     "test:salesforce": "bash src/test/test-salesforce-agent.sh",
     "test:host": "bash src/test/test-host-agent.sh",
+    "test:webhook": "curl -X POST http://localhost:3000/webhook/meeting-transcript -H \"Content-Type: application/json\" -d '{\"transcript\": \"$(cat src/test/sample-transcript.txt)\"}' | jq",
     "start:all": "bash src/test/start-all-agents.sh",
     "stop:all": "bash src/test/stop-all-agents.sh",
     "build": "tsc"

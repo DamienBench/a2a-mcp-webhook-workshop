@@ -18,7 +18,7 @@ export { InMemoryTaskStore, FileStore } from "./store.js";
 export { A2AError } from "./error.js";
 
 // Re-export all schema types for convenience
-export * as schema from "../schema.js";
+export * as schema from "../../schema.js";
 
 // Example basic usage (for documentation or testing)
 /*

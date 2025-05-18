@@ -1,0 +1,25 @@
+{
+  "id": "meeting-transcript",
+  "name": "Meeting Transcript Processor",
+  "description": "Processes meeting transcripts and extracts tasks for different agents",
+  "processor": "meeting-transcript",
+  "processorConfig": {
+    "agents": [
+      {
+        "id": "github",
+        "type": "github",
+        "url": "http://localhost:41245"
+      },
+      {
+        "id": "slack",
+        "type": "slack",
+        "url": "http://localhost:41243"
+      },
+      {
+        "id": "salesforce",
+        "type": "salesforce",
+        "url": "http://localhost:41244"
+      }
+    ]
+  }
+} 

@@ -4,7 +4,7 @@ import * as dotenv from "dotenv";
 import { z } from "genkit/beta";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import { A2AClient } from '../client/client.js';
+import { A2AClient } from '../../a2a/client/client.js';
 
 // Load environment variables from .env file
 dotenv.config();

@@ -5,9 +5,10 @@
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import { hostAgentPrompt, getHostTools } from './genkit.js';
-import { TaskContext, A2AServer, TaskYieldUpdate } from "../server/index.js";
-import * as schema from "../schema.js";
-import { A2AClient } from '../client/client.js';
+import { TaskContext, A2AServer, TaskYieldUpdate } from "../../a2a/server/index.js";
+import * as schema from "../../schema.js";
+import { A2AClient } from '../../a2a/client/client.js';
+import { processWebhookData } from './webhook-handler.js';
 
 // Load environment variables
 dotenv.config();
@@ -264,6 +265,56 @@ async function* hostAgent({
   
   try {
     console.log("[HostAgent] Processing request:", userText);
+    
+    // Check if this is a webhook message (sent by the webhook server)
+    if (userText.startsWith('{') && userText.includes('"type":"webhook"')) {
+      console.log("[HostAgent] Detected webhook data");
+      
+      try {
+        // Parse the webhook data
+        const webhookData = JSON.parse(userText);
+        
+        // Process the webhook data
+        yield {
+          state: "working",
+          message: {
+            role: "agent",
+            parts: [{ type: "text", text: `Processing webhook from ${webhookData.webhookId || 'unknown source'}...` }],
+          },
+        };
+        
+        const result = await processWebhookData(webhookData);
+        
+        if (result.success) {
+          yield {
+            state: "completed",
+            message: {
+              role: "agent",
+              parts: [{ 
+                type: "text", 
+                text: `Successfully processed webhook: ${webhookData.webhookId || 'unknown'}\n` +
+                      `Results: ${JSON.stringify(result.results, null, 2)}`
+              }],
+            },
+          };
+        } else {
+          yield {
+            state: "failed",
+            message: {
+              role: "agent",
+              parts: [{ 
+                type: "text", 
+                text: `Failed to process webhook: ${webhookData.webhookId || 'unknown'}`
+              }],
+            },
+          };
+        }
+        
+        return;
+      } catch (error) {
+        console.error("[HostAgent] Error processing webhook:", error);
+      }
+    }
     
     // Generate a session ID
     const sessionId = task.id || crypto.randomUUID();

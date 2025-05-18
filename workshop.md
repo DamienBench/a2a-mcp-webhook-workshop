@@ -135,7 +135,7 @@ graph TD
 
 #### Slide 8: Code Structure Overview
 - Main components:
-  - Host agent (`src/host/`)
+  - Host agent (`src/agents/host/`)
   - Specialized agents (`src/agents/`)
   - MCP integration (`src/mcp/`)
   - A2A implementation (`src/server/, src/client/`)
@@ -265,9 +265,9 @@ graph TD
 
 #### Slide 19: Host Agent Code Walkthrough
 - Key files:
-  - `src/host/index.ts`: Main server implementation
-  - `src/host/genkit.ts`: Gemini integration
-  - `src/host/host_agent.prompt`: Agent instructions
+  - `src/agents/host/index.ts`: Main server implementation
+  - `src/agents/host/genkit.ts`: Gemini integration
+  - `src/agents/host/host_agent.prompt`: Agent instructions
 - Key functions:
   - Agent discovery
   - Task routing

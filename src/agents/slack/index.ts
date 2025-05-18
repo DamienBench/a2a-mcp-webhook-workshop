@@ -1,8 +1,8 @@
-import { TaskYieldUpdate } from "../../server/handler.js";
+import { TaskYieldUpdate } from "../../a2a/server/handler.js";
 import {
   TaskContext,
   A2AServer
-} from "../../server/index.js";
+} from "../../a2a/server/index.js";
 import * as schema from "../../schema.js";
 import { ai, getSlackTools, slackAgentPrompt } from "./genkit.js";
 import * as dotenv from "dotenv";

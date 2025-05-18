@@ -1,4 +1,4 @@
-import * as schema from "../schema.js";
+import * as schema from "../../schema.js";
 import { TaskStore } from "./store.js"; // Import TaskStore
 
 /**

@@ -1,4 +1,4 @@
-import { A2AClient } from "../client/client.js";
+import { A2AClient } from "../a2a/client/client.js";
 import { TaskSendParams, TaskStatusUpdateEvent, TaskArtifactUpdateEvent } from "../schema.js";
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -107,7 +107,7 @@ async function sendRequestToAgent(
     }
     
     console.log("\n✅ Stream completed");
-    console.log(`\n📦 Received ${receivedFiles.size} files: ${Array.from(receivedFiles.keys()).join(', ')}`);
+    // console.log(`\n📦 Received ${receivedFiles.size} files: ${Array.from(receivedFiles.keys()).join(', ')}`);
     
     // Save all received files to an agent-specific subdirectory
     const agentOutputDir = path.join(outputDir, agentType);
