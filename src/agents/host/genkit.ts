@@ -15,13 +15,6 @@ if (!process.env.GEMINI_API_KEY) {
   process.exit(1);
 }
 
-// Agent URLs
-const agentUrls = {
-  slack: process.env.SLACK_AGENT_URL || "http://localhost:41243",
-  salesforce: process.env.SALESFORCE_AGENT_URL || "http://localhost:41244",
-  github: process.env.GITHUB_AGENT_URL || "http://localhost:41245"
-};
-
 // Initialize the Genkit AI client
 export const ai = genkit({
   plugins: [
@@ -36,6 +29,49 @@ export const ai = genkit({
 // Load the prompt defined in host_agent.prompt
 export const hostAgentPrompt = ai.prompt("host_agent");
 
+// Cache for agent capabilities and examples (populated at runtime)
+const agentCache = new Map<string, {
+  description: string;
+  examples: string[];
+  agentCard?: any;
+}>();
+
+/**
+ * Fetch agent information from its agent card
+ */
+async function fetchAgentInfo(agentUrl: string): Promise<{ description: string; examples: string[]; agentCard: any }> {
+  try {
+    console.log(`[HostAgent] Fetching agent info from ${agentUrl}`);
+    const client = new A2AClient(agentUrl);
+    const agentCard = await client.agentCard();
+    
+    // Extract capabilities description from agent card
+    let description = agentCard.description || '';
+    
+    // Extract examples from agent card skills
+    const examples: string[] = [];
+    if (agentCard.skills && agentCard.skills.length > 0) {
+      for (const skill of agentCard.skills) {
+        if (skill.examples && Array.isArray(skill.examples)) {
+          examples.push(...skill.examples);
+        }
+      }
+    }
+    
+    console.log(`[HostAgent] Retrieved agent info: ${description.substring(0, 50)}...`);
+    console.log(`[HostAgent] Retrieved ${examples.length} examples`);
+    
+    return { description, examples, agentCard };
+  } catch (error) {
+    console.error(`[HostAgent] Error fetching agent info: ${error}`);
+    return { 
+      description: `Agent at ${agentUrl}`,
+      examples: [],
+      agentCard: {}
+    };
+  }
+}
+
 // Define the list_remote_agents tool
 export const listRemoteAgents = ai.defineTool(
   {
@@ -46,9 +82,11 @@ export const listRemoteAgents = ai.defineTool(
   async () => {
     console.log("[HostAgent] Listing remote agents");
     
-    const agents = Object.entries(agentUrls).map(([name, url]) => ({
+    // Get all agent information from cache
+    const agents = Array.from(agentCache.entries()).map(([name, info]) => ({
       name,
-      description: getAgentDescription(name)
+      description: info.description,
+      examples: info.examples || []
     }));
     
     console.log("[HostAgent] Available agents:", JSON.stringify(agents, null, 2));
@@ -62,7 +100,7 @@ export const sendTask = ai.defineTool(
     name: "send_task",
     description: "Send a task to a specific remote agent",
     inputSchema: z.object({
-      agent_name: z.string().describe("The name of the agent to send the task to (slack, github, or salesforce)"),
+      agent_name: z.string().describe("The name of the agent to send the task to"),
       message: z.string().describe("The message or instructions to send to the agent")
     }).catchall(z.any()),
   },
@@ -72,7 +110,10 @@ export const sendTask = ai.defineTool(
     // Extract agent name and message
     const { agent_name, message } = inputParams;
     
-    if (!agentUrls[agent_name]) {
+    // Get agent URL from the global configuration (loaded elsewhere)
+    const agentUrl = global.agentUrls?.[agent_name];
+    
+    if (!agentUrl) {
       console.error(`[HostAgent] Agent ${agent_name} not found!`);
       return { 
         success: false, 
@@ -80,12 +121,30 @@ export const sendTask = ai.defineTool(
       };
     }
     
+    // Check if we're in webhook analysis mode (set externally)
+    if (global.isWebhookContentAnalysis) {
+      console.log(`[DUPLICATION DEBUG] Skipping task sending during content analysis for ${agent_name}. This task will be sent later during parallel execution.`);
+      return {
+        success: true,
+        agent: agent_name,
+        message,
+        state: "skipped",
+        skippedDuringAnalysis: true
+      };
+    }
+    
     // Log the specific task being sent for debugging
     console.log(`[HostAgent] Sending task to ${agent_name.toUpperCase()} agent: "${message}"`);
     
     try {
+      // Get agent examples from cache
+      const agentInfo = agentCache.get(agent_name);
+      if (agentInfo?.examples) {
+        console.log(`[HostAgent] Using examples for ${agent_name}:`, agentInfo.examples);
+      }
+      
       // Forward to sub-agent
-      const client = new A2AClient(agentUrls[agent_name]);
+      const client = new A2AClient(agentUrl);
       const taskId = crypto.randomUUID();
       
       console.log(`[HostAgent] Calling A2AClient.sendTask for ${agent_name} with taskId ${taskId}`);
@@ -126,17 +185,23 @@ export const sendTask = ai.defineTool(
   }
 );
 
-// Helper function to get agent descriptions
-function getAgentDescription(agentName: string): string {
-  switch (agentName) {
-    case 'slack':
-      return "Send messages to Slack channels";
-    case 'github':
-      return "Create issues in GitHub repositories";
-    case 'salesforce':
-      return "Create, find, and update Salesforce records";
-    default:
-      return "Unknown agent";
+/**
+ * Register an agent in the cache
+ * @param agentType The name/type of the agent
+ * @param agentUrl The URL of the agent
+ */
+export async function registerAgent(agentType: string, agentUrl: string): Promise<void> {
+  try {
+    const agentInfo = await fetchAgentInfo(agentUrl);
+    agentCache.set(agentType, agentInfo);
+    console.log(`[HostAgent] Registered agent '${agentType}' with ${agentInfo.examples.length} examples`);
+  } catch (error) {
+    console.error(`[HostAgent] Error registering agent '${agentType}':`, error);
+    // Add a minimal entry even on error
+    agentCache.set(agentType, {
+      description: `Agent at ${agentUrl}`,
+      examples: []
+    });
   }
 }
 

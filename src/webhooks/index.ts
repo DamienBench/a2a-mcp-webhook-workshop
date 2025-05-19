@@ -5,7 +5,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Get port from environment or use default
-const PORT = parseInt(process.env.WEBHOOK_PORT || '3000', 10);
+// Use process.env.PORT directly if it exists (for Heroku, etc.)
+const PORT = parseInt(process.env.PORT || process.env.WEBHOOK_PORT || '3000', 10);
+
+// Log the port we're trying to use
+console.log(`Attempting to start webhook server on port ${PORT}`);
 
 async function main() {
   try {

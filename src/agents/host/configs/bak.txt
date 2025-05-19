@@ -1,0 +1,5 @@
+{
+    "id": "salesforce",
+    "type": "salesforce",
+    "url": "http://localhost:41244"
+}

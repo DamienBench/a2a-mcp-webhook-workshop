@@ -4,11 +4,19 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { A2AClient } from '../a2a/client/client.js';
+import { existsSync, writeFileSync, readFileSync } from 'node:fs';
+import crypto from 'node:crypto';
 
-// Get directory path for config files
+// Get the paths for configs and resources
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const configDir = path.join(__dirname, 'config');
 const publicDir = path.join(__dirname, 'public');
+const logDir = path.join(__dirname, '..', '..', 'logs');
+const configDir = path.join(__dirname, 'config');
+const hostAgentConfigDir = path.join(__dirname, '..', 'agents', 'host', 'configs');
+const statsFilePath = path.join(logDir, 'webhook-stats.json');
+
+// Ensure we don't use the old stats file location
+const oldStatsFilePath = path.join(__dirname, 'data', 'webhook-stats.json');
 
 // Default host agent URL
 const HOST_AGENT_URL = process.env.HOST_AGENT_URL || 'http://localhost:41240';
@@ -26,6 +34,35 @@ interface WebhookConfig {
 }
 
 /**
+ * Webhook statistics interface
+ */
+interface WebhookStats {
+  totalProcessed: number;
+  agentInvocations: {
+    host: number;
+    github: number;
+    slack: number;
+    salesforce: number;
+  };
+  recentWebhooks: WebhookInvocation[];
+}
+
+/**
+ * Webhook invocation interface
+ */
+interface WebhookInvocation {
+  id: string;
+  name: string;
+  timestamp: string;
+  status: 'success' | 'failed' | 'processing';
+  details?: {
+    webhookData: any;
+    result: any;
+    agentMessages: Record<string, string>;
+  };
+}
+
+/**
  * Webhook server class
  */
 export class WebhookServer {
@@ -33,11 +70,24 @@ export class WebhookServer {
   private port: number;
   private configs: Map<string, WebhookConfig> = new Map();
   private hostAgentClient: A2AClient;
-
+  private stats: WebhookStats;
+  
   constructor(port = 3000) {
     this.port = port;
     this.app = express();
     this.hostAgentClient = new A2AClient(HOST_AGENT_URL);
+    
+    // Initialize statistics
+    this.stats = {
+      totalProcessed: 0,
+      agentInvocations: {
+        host: 0,
+        github: 0,
+        slack: 0,
+        salesforce: 0
+      },
+      recentWebhooks: []
+    };
     
     // Setup middleware
     this.app.use(cors());
@@ -52,46 +102,51 @@ export class WebhookServer {
   }
 
   /**
-   * Load all webhook configurations from the config directory
+   * Load all webhook configurations from the host agent config directory
    */
   private async loadConfigurations(): Promise<void> {
     try {
-      // Ensure config directory exists
-      await fs.mkdir(configDir, { recursive: true });
+      console.log(`[DUPLICATION DEBUG] Loading webhook configurations...`);
       
-      // Read all configuration files
-      const files = await fs.readdir(configDir);
-      const configFiles = files.filter(file => file.endsWith('.json'));
+      // Log the paths we're looking at
+      console.log(`[DUPLICATION DEBUG] Host agent config dir: ${hostAgentConfigDir}`);
       
-      for (const file of configFiles) {
+      // Only load from the host agent config directory
+      if (existsSync(hostAgentConfigDir)) {
         try {
-          const configPath = path.join(configDir, file);
-          const configData = await fs.readFile(configPath, 'utf-8');
-          const config = JSON.parse(configData) as WebhookConfig;
+          const webhookConfigPath = path.join(hostAgentConfigDir, 'webhook.json');
+          console.log(`[DUPLICATION DEBUG] Looking for webhook config at: ${webhookConfigPath}`);
           
-          if (config.id) {
-            this.configs.set(config.id, config);
-            console.log(`Loaded webhook config: ${config.id} - ${config.name}`);
+          if (existsSync(webhookConfigPath)) {
+            const configData = await fs.readFile(webhookConfigPath, 'utf-8');
+            const config = JSON.parse(configData) as WebhookConfig;
+            
+            if (config.id) {
+              this.configs.set(config.id, config);
+              console.log(`[DUPLICATION DEBUG] Loaded webhook config from host agent: ${config.id} - ${config.name}`);
+              console.log(`[DUPLICATION DEBUG] Config contains ${config.processorConfig?.agents?.length || 0} agent entries`);
+            }
+          } else {
+            console.warn(`[WebhookServer] No webhook configuration found at ${webhookConfigPath}`);
           }
         } catch (err) {
-          console.error(`Error loading config file ${file}:`, err);
+          console.error(`[WebhookServer] Error loading webhook config from host agent:`, err);
         }
+      } else {
+        console.warn(`[WebhookServer] Host agent config directory not found at ${hostAgentConfigDir}`);
       }
       
-      // If no configurations exist, create a default meeting transcript one
+      // Log the number of loaded configurations
+      console.log(`[DUPLICATION DEBUG] Configs map size: ${this.configs.size}`);
+      console.log(`[DUPLICATION DEBUG] Configs map keys: ${Array.from(this.configs.keys()).join(', ')}`);
+      console.log(`[WebhookServer] Loaded ${this.configs.size} webhook configurations`);
+      
+      // If no configurations exist, warn about it
       if (this.configs.size === 0) {
-        const defaultConfig: WebhookConfig = {
-          id: 'meeting-transcript',
-          name: 'Meeting Transcript Processor',
-          description: 'Processes meeting transcripts and extracts tasks for different agents',
-          processor: 'meeting-transcript'
-        };
-        
-        await this.saveConfiguration(defaultConfig);
-        console.log('Created default meeting transcript webhook configuration');
+        console.warn('[WebhookServer] No webhook configurations found - expecting one to be present in host agent configs');
       }
     } catch (err) {
-      console.error('Error loading webhook configurations:', err);
+      console.error('[WebhookServer] Error loading webhook configurations:', err);
     }
   }
 
@@ -100,15 +155,18 @@ export class WebhookServer {
    */
   private async saveConfiguration(config: WebhookConfig): Promise<void> {
     try {
-      // Ensure config directory exists
-      await fs.mkdir(configDir, { recursive: true });
+      // Only save config to host agent directory
+      await fs.mkdir(hostAgentConfigDir, { recursive: true });
       
-      // Save config to file
-      const configPath = path.join(configDir, `${config.id}.json`);
-      await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+      // Save config only to host agent location
+      const hostConfigPath = path.join(hostAgentConfigDir, 'webhook.json');
+      
+      await fs.writeFile(hostConfigPath, JSON.stringify(config, null, 2), 'utf-8');
       
       // Update in-memory config
       this.configs.set(config.id, config);
+      
+      console.log(`[WebhookServer] Saved webhook configuration to ${hostConfigPath}`);
     } catch (err) {
       console.error(`Error saving webhook configuration ${config.id}:`, err);
       throw err;
@@ -135,6 +193,10 @@ export class WebhookServer {
     // API endpoint for fetching agent logs
     this.app.get('/api/logs/:agent', this.getAgentLogs.bind(this));
     
+    // API endpoints for webhook statistics
+    this.app.get('/api/stats', this.getWebhookStats.bind(this));
+    this.app.get('/api/stats/webhook/:invocationId', this.getWebhookInvocationDetails.bind(this));
+    
     // Error handler
     this.app.use(this.errorHandler.bind(this));
   }
@@ -147,8 +209,31 @@ export class WebhookServer {
       const webhookId = req.params.id;
       const webhookData = req.body;
       
-      console.log(`Received webhook request for ${webhookId}:`);
+      console.log(`[DUPLICATION DEBUG] Received webhook request for ${webhookId} at ${new Date().toISOString()}`);
       console.log(JSON.stringify(webhookData, null, 2));
+      
+      // Calculate a simple hash of the request body for deduplication
+      const requestBody = JSON.stringify(webhookData);
+      const requestHash = crypto.createHash('sha256').update(requestBody).digest('hex').substring(0, 12);
+      const dedupKey = `${webhookId}-${requestHash}`;
+      
+      console.log(`[DUPLICATION DEBUG] Request hash: ${requestHash}, dedupKey: ${dedupKey}`);
+      
+      // Check for duplicate submission (within 10 seconds)
+      const now = Date.now();
+      const lastSubmissionTime = this.recentTestSubmissions.get(dedupKey);
+      
+      if (lastSubmissionTime && (now - lastSubmissionTime) < 10000) {
+        console.log(`[DUPLICATION DEBUG] Duplicate webhook detected within 10 seconds: ${dedupKey}`);
+        return res.status(409).json({ 
+          error: 'Duplicate request',
+          message: 'A similar webhook was submitted within the last 10 seconds. Please wait before retrying.'
+        });
+      }
+      
+      // Record this submission to prevent duplicates
+      this.recentTestSubmissions.set(dedupKey, now);
+      console.log(`[DUPLICATION DEBUG] Recorded submission with dedupKey: ${dedupKey}`);
       
       // Check if webhook configuration exists
       const config = this.configs.get(webhookId);
@@ -159,14 +244,23 @@ export class WebhookServer {
         });
       }
       
-      // Process the webhook data
-      const result = await this.processWebhookData(webhookData, config);
+      // Generate a unique invocation ID
+      const invocationId = `${webhookId}-${now}`;
+      console.log(`[DUPLICATION DEBUG] Generated invocationId: ${invocationId}`);
       
-      res.status(200).json({
+      // Record the webhook with "processing" status
+      this.recordWebhookInvocation(webhookId, config.name, webhookData, null, 'processing', invocationId);
+      
+      // Process the webhook data asynchronously
+      this.processWebhookAsync(webhookId, invocationId, webhookData, config);
+      
+      // Immediately return a response indicating the webhook is being processed
+      res.status(202).json({
         success: true,
         webhookId,
-        message: 'Webhook processed successfully',
-        result
+        invocationId,
+        message: 'Webhook received and is being processed',
+        status: 'processing'
       });
     } catch (err) {
       next(err);
@@ -174,12 +268,51 @@ export class WebhookServer {
   }
   
   /**
+   * Process webhook data asynchronously
+   */
+  private async processWebhookAsync(webhookId: string, invocationId: string, webhookData: any, config: WebhookConfig): Promise<void> {
+    try {
+      console.log(`[DUPLICATION DEBUG] Starting processWebhookAsync for invocationId: ${invocationId}`);
+      
+      // Process the webhook data - pass the invocation ID to ensure stable task ID generation
+      const result = await this.processWebhookData(webhookData, config, invocationId);
+      
+      // Add debug log to see result structure
+      console.log(`[DUPLICATION DEBUG] Webhook processing complete for ${invocationId}`);
+      console.log(`[WebhookServer] Processing webhook result for ${webhookId}:`, 
+        JSON.stringify(result, null, 2).substring(0, 500) + '...');
+      
+      // Determine overall success status using our helper method
+      const success = this.determineWebhookSuccess(result);
+      console.log(`[WebhookServer] Webhook ${invocationId} success determination: ${success}`);
+      
+      // Update the webhook invocation with the final status
+      this.recordWebhookInvocation(webhookId, config.name, webhookData, result, success ? 'success' : 'failed', invocationId);
+    } catch (err) {
+      console.error('Error processing webhook asynchronously:', err);
+      
+      // Update the webhook invocation with error status
+      this.recordWebhookInvocation(webhookId, config.name, webhookData, {
+        error: 'Failed to process webhook',
+        details: err.message
+      }, 'failed', invocationId);
+    }
+  }
+  
+  /**
    * Process webhook data and send to host agent
    */
-  private async processWebhookData(data: any, config: WebhookConfig): Promise<any> {
+  private async processWebhookData(data: any, config: WebhookConfig, invocationId?: string): Promise<any> {
     try {
       // Simply pass the raw data directly to the host agent without any pre-processing
-      return await this.sendToHostAgent(data, config);
+      const result = await this.sendToHostAgent(data, config, invocationId);
+      
+      // If this is a mockResponse due to connection error, mark as failed
+      if (result && result.mockResponse) {
+        result.success = false;
+      }
+      
+      return result;
     } catch (err) {
       console.error('Error processing webhook data:', err);
       throw err;
@@ -189,7 +322,7 @@ export class WebhookServer {
   /**
    * Send data to the host agent
    */
-  private async sendToHostAgent(data: any, config: WebhookConfig): Promise<any> {
+  private async sendToHostAgent(data: any, config: WebhookConfig, invocationId?: string): Promise<any> {
     // Use specific host agent URL if configured, otherwise use default
     const hostAgentUrl = config.hostAgentUrl || HOST_AGENT_URL;
     const client = hostAgentUrl !== HOST_AGENT_URL 
@@ -204,9 +337,13 @@ export class WebhookServer {
         console.log('CONFIG DEBUG: parallel setting:', config.processorConfig.parallel);
       }
       
+      // Use invocation ID if provided to ensure stability of the task ID
+      const stableId = invocationId || `webhook-${config.id}-${Date.now()}`;
+      console.log(`[DUPLICATION DEBUG] Sending to host agent with stableId: ${stableId}`);
+      
       // Create task parameters
       const params = {
-        id: `webhook-${config.id}-${Date.now()}`,
+        id: stableId,
         message: {
           role: "user" as "user", // Type assertion to fix the type issue
           parts: [{ 
@@ -216,7 +353,8 @@ export class WebhookServer {
               webhookId: config.id,
               webhookName: config.name,
               processorConfig: config.processorConfig || {}, // Include the processor configuration
-              data
+              data,
+              requestId: stableId // Include the stable ID as the requestId for deduplication
             })
           }]
         }
@@ -227,12 +365,14 @@ export class WebhookServer {
       
       // Send task to host agent - add timeout and error handling
       try {
+        console.log(`[DUPLICATION DEBUG] Sending task to host agent at ${hostAgentUrl} with ID ${stableId}`);
         const response = await Promise.race([
           client.sendTask(params),
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Connection to host agent timed out')), 120000)
           )
         ]);
+        console.log(`[DUPLICATION DEBUG] Received response from host agent for task ${stableId}`);
         return response;
       } catch (connError) {
         // Handle connection errors with more details
@@ -354,6 +494,9 @@ export class WebhookServer {
     }
   }
   
+  // Map to track recent webhook test submissions to prevent duplicates
+  private recentTestSubmissions = new Map<string, number>();
+  
   /**
    * API endpoint to test a webhook
    */
@@ -362,54 +505,74 @@ export class WebhookServer {
       const webhookId = req.params.id;
       const testData = req.body;
       
+      console.log(`[DUPLICATION DEBUG] Testing webhook ${webhookId} at ${new Date().toISOString()}`);
+      console.log(JSON.stringify(testData, null, 2));
+      
+      // Calculate a simple hash of the request body for deduplication
+      const requestBody = JSON.stringify(testData);
+      const requestHash = crypto.createHash('sha256').update(requestBody).digest('hex').substring(0, 12);
+      const dedupKey = `${webhookId}-${requestHash}`;
+      
+      console.log(`[DUPLICATION DEBUG] Test request hash: ${requestHash}, dedupKey: ${dedupKey}`);
+      console.log(`[DUPLICATION DEBUG] Current recentTestSubmissions Map has ${this.recentTestSubmissions.size} entries`);
+      
+      // Check for duplicate submission (within 10 seconds)
+      const now = Date.now();
+      const lastSubmissionTime = this.recentTestSubmissions.get(dedupKey);
+      
+      console.log(`[DUPLICATION DEBUG] Last submission time for ${dedupKey}: ${lastSubmissionTime || 'none'}`);
+      
+      if (lastSubmissionTime && (now - lastSubmissionTime) < 10000) {
+        console.log(`[DUPLICATION DEBUG] Duplicate webhook test detected within 10 seconds: ${dedupKey}`);
+        return res.status(409).json({ 
+          error: 'Duplicate request',
+          message: 'A similar webhook test was submitted within the last 10 seconds. Please wait before retrying.'
+        });
+      }
+      
+      // Record this submission to prevent duplicates
+      this.recentTestSubmissions.set(dedupKey, now);
+      console.log(`[DUPLICATION DEBUG] Recorded test submission with dedupKey: ${dedupKey}`);
+      
+      // Periodically clean up old entries (every 100 requests)
+      if (this.recentTestSubmissions.size > 100) {
+        const cutoffTime = now - 60000; // 1 minute
+        for (const [key, timestamp] of this.recentTestSubmissions.entries()) {
+          if (timestamp < cutoffTime) {
+            this.recentTestSubmissions.delete(key);
+          }
+        }
+      }
+      
       // Check if webhook configuration exists
       const config = this.configs.get(webhookId);
       if (!config) {
-        return res.status(404).json({ error: 'Webhook configuration not found' });
-      }
-      
-      // Process the webhook data - now with improved error handling
-      const result = await this.processWebhookData(testData, config);
-      
-      // Check if we got an error response
-      if (result && result.mockResponse === true && result.success === false) {
-        return res.status(200).json({
-          success: false,
-          webhookId,
-          message: 'Test webhook failed but handled gracefully',
-          error: result.error,
-          details: result.details
+        return res.status(404).json({ 
+          error: 'Webhook configuration not found',
+          message: `No configuration found for webhook ID: ${webhookId}`
         });
       }
       
-      // Check if the host agent failed to process the webhook
-      // This is indicated by result.status.state === 'failed'
-      if (result && result.status && result.status.state === 'failed') {
-        return res.status(200).json({
-          success: false,
-          webhookId,
-          message: 'Webhook was sent but failed to process',
-          result
-        });
-      }
+      // Generate a unique invocation ID
+      const invocationId = `${webhookId}-${now}`;
+      console.log(`[DUPLICATION DEBUG] Generated test invocationId: ${invocationId}`);
       
-      // Normal success response
-      return res.status(200).json({
+      // Record the webhook with "processing" status
+      this.recordWebhookInvocation(webhookId, config.name, testData, null, 'processing', invocationId);
+      
+      // Process the webhook data asynchronously
+      this.processWebhookAsync(webhookId, invocationId, testData, config);
+      
+      // Immediately return a response indicating the webhook is being processed
+      res.status(202).json({
         success: true,
         webhookId,
-        message: 'Test webhook processed successfully',
-        result
+        invocationId,
+        message: 'Webhook test received and is being processed',
+        status: 'processing'
       });
     } catch (err) {
-      // Log the error but don't crash
-      console.error('Error in testWebhook:', err);
-      
-      // Return a more informative error
-      return res.status(500).json({
-        success: false,
-        error: 'Internal Server Error',
-        message: err.message || 'Unknown error occurred'
-      });
+      next(err);
     }
   }
   
@@ -464,6 +627,224 @@ export class WebhookServer {
   }
   
   /**
+   * Record a webhook invocation and update statistics
+   */
+  private async recordWebhookInvocation(
+    webhookId: string, 
+    webhookName: string, 
+    webhookData: any, 
+    result: any, 
+    status: 'success' | 'failed' | 'processing',
+    invocationId?: string
+  ): Promise<void> {
+    try {
+      // Generate a unique invocation ID if not provided
+      const finalInvocationId = invocationId || `${webhookId}-${Date.now()}`;
+      
+      // Check if we're updating an existing invocation
+      const existingIndex = this.stats.recentWebhooks.findIndex(webhook => webhook.id === finalInvocationId);
+      const isUpdating = existingIndex !== -1;
+      
+      // Only increment stats when creating a new record, not when updating
+      if (!isUpdating) {
+        this.stats.totalProcessed++;
+        
+        // For processing status, we only increment the host agent
+        if (status === 'processing') {
+          this.stats.agentInvocations.host++;
+        }
+      }
+      
+      // For completed webhooks (not processing status), check if other agents were invoked
+      if (status !== 'processing' && result && result.results) {
+        // Look for agent results in the response
+        for (const agentResult of result.results) {
+          if (agentResult.agent) {
+            const agentType = agentResult.agent.toLowerCase();
+            if (agentType.includes('github')) {
+              this.stats.agentInvocations.github++;
+            } else if (agentType.includes('slack')) {
+              this.stats.agentInvocations.slack++;
+            } else if (agentType.includes('salesforce')) {
+              this.stats.agentInvocations.salesforce++;
+            }
+          }
+        }
+      }
+      
+      // Double-check and override status using our helper method
+      if (status === 'success' && result) {
+        status = this.determineWebhookSuccess(result) ? 'success' : 'failed';
+      }
+      
+      // Extract agent messages if available
+      let agentMessages: Record<string, string> = {};
+      
+      // Check directly for the tasks object first (most reliable source)
+      if (result?.tasks && typeof result.tasks === 'object') {
+        console.log('[WebhookServer] Found tasks object in result:', result.tasks);
+        agentMessages = result.tasks;
+      } 
+      // Then try to check each agent result from processed webhook
+      else if (result?.results) {
+        console.log('[WebhookServer] Checking agent results for task messages');
+        
+        // Handle both array and object formats for results
+        if (Array.isArray(result.results)) {
+          // Array format
+          for (const agentResult of result.results) {
+            if (agentResult.agent && agentResult.task?.message?.parts?.[0]?.text) {
+              agentMessages[agentResult.agent.toLowerCase()] = agentResult.task.message.parts[0].text;
+            }
+          }
+        } else {
+          // Object format with agent types as keys
+          for (const [agentType, agentResult] of Object.entries(result.results)) {
+            // Extract the message sent to the agent
+            const taskInfo = (agentResult as any).task || {};
+            if (taskInfo.message?.parts?.[0]?.text) {
+              agentMessages[agentType.toLowerCase()] = taskInfo.message.parts[0].text;
+            }
+          }
+        }
+      }
+      
+      console.log('[WebhookServer] Extracted agent messages:', agentMessages);
+      
+      // Create or update the invocation record
+      const invocation: WebhookInvocation = {
+        id: finalInvocationId,
+        name: webhookName,
+        timestamp: new Date().toISOString(),
+        status,
+        details: {
+          webhookData,
+          result,
+          agentMessages // Include the messages sent to each agent
+        }
+      };
+      
+      // Update or add to recent invocations
+      if (isUpdating) {
+        // Update existing invocation
+        this.stats.recentWebhooks[existingIndex] = invocation;
+      } else {
+        // Add new invocation at the beginning of the list
+        this.stats.recentWebhooks.unshift(invocation);
+        
+        // Limit to most recent 50 invocations
+        if (this.stats.recentWebhooks.length > 50) {
+          this.stats.recentWebhooks = this.stats.recentWebhooks.slice(0, 50);
+        }
+      }
+      
+      // Save statistics to file
+      await this.saveStats();
+    } catch (err) {
+      console.error('Error recording webhook invocation:', err);
+    }
+  }
+  
+  /**
+   * Save statistics to file
+   */
+  private async saveStats(): Promise<void> {
+    try {
+      // Ensure log directory exists
+      await fs.mkdir(logDir, { recursive: true });
+      
+      // Write stats to file
+      await fs.writeFile(statsFilePath, JSON.stringify(this.stats, null, 2), 'utf-8');
+      
+      // Remove old stats file if it exists (transitional cleanup)
+      try {
+        if (existsSync(oldStatsFilePath)) {
+          await fs.unlink(oldStatsFilePath);
+          console.log('Removed old webhook stats file');
+        }
+      } catch (cleanupErr) {
+        console.warn('Error cleaning up old stats file:', cleanupErr);
+      }
+    } catch (err) {
+      console.error('Error saving webhook statistics:', err);
+    }
+  }
+  
+  /**
+   * Load statistics from file
+   */
+  private async loadStats(): Promise<void> {
+    try {
+      // Check if stats file exists
+      try {
+        await fs.access(statsFilePath);
+      } catch {
+        // Create an empty stats file if it doesn't exist
+        await this.saveStats();
+        return;
+      }
+      
+      // Read stats from file
+      const statsData = await fs.readFile(statsFilePath, 'utf-8');
+      this.stats = JSON.parse(statsData) as WebhookStats;
+      
+      console.log(`Loaded webhook stats from ${statsFilePath} with ${this.stats.recentWebhooks.length} webhooks`);
+    } catch (err) {
+      console.error('Error loading webhook statistics:', err);
+      
+      // Initialize with default stats if loading fails
+      this.stats = {
+        totalProcessed: 0,
+        agentInvocations: {
+          host: 0,
+          github: 0,
+          slack: 0,
+          salesforce: 0
+        },
+        recentWebhooks: []
+      };
+      
+      // Save the default stats
+      await this.saveStats();
+    }
+  }
+  
+  /**
+   * Get webhook statistics
+   */
+  private async getWebhookStats(req: Request, res: Response, next: NextFunction): Promise<void | Response> {
+    try {
+      // Return the current stats
+      return res.status(200).json(this.stats);
+    } catch (err) {
+      next(err);
+    }
+  }
+  
+  /**
+   * Get webhook invocation details
+   */
+  private async getWebhookInvocationDetails(req: Request, res: Response, next: NextFunction): Promise<void | Response> {
+    try {
+      const invocationId = req.params.invocationId;
+      
+      // Find the invocation by ID
+      const invocation = this.stats.recentWebhooks.find(webhook => webhook.id === invocationId);
+      
+      if (!invocation) {
+        return res.status(404).json({
+          error: 'Webhook invocation not found',
+          message: `No invocation found with ID: ${invocationId}`
+        });
+      }
+      
+      return res.status(200).json(invocation);
+    } catch (err) {
+      next(err);
+    }
+  }
+  
+  /**
    * Error handler middleware
    */
   private errorHandler(err: Error, req: Request, res: Response, next: NextFunction): void {
@@ -479,12 +860,188 @@ export class WebhookServer {
    * Start the webhook server
    */
   public async start(): Promise<void> {
-    // Load webhook configurations
-    await this.loadConfigurations();
+    try {
+      // Load configurations
+      await this.loadConfigurations();
+      
+      // Check for old stats file and migrate if needed
+      await this.migrateOldStatsFile();
+      
+      // Load statistics
+      await this.loadStats();
+      
+      // Start the server
+      this.app.listen(this.port, () => {
+        console.log(`Webhook server running on port ${this.port}`);
+        console.log(`Using webhook stats file: ${statsFilePath}`);
+      });
+    } catch (err) {
+      console.error('Error starting webhook server:', err);
+      throw err;
+    }
+  }
+  
+  /**
+   * Migrate old stats file if it exists
+   */
+  private async migrateOldStatsFile(): Promise<void> {
+    try {
+      // Check if old stats file exists
+      if (existsSync(oldStatsFilePath)) {
+        console.log('Found old webhook stats file, migrating to new location...');
+        
+        try {
+          // Read old stats
+          const oldStatsData = await fs.readFile(oldStatsFilePath, 'utf-8');
+          const oldStats = JSON.parse(oldStatsData) as WebhookStats;
+          
+          // Check if new stats file already exists
+          if (!existsSync(statsFilePath)) {
+            // Save old stats to new location
+            await fs.mkdir(logDir, { recursive: true });
+            await fs.writeFile(statsFilePath, oldStatsData, 'utf-8');
+            console.log('Migrated webhook stats to new location');
+          } else {
+            console.log('New stats file already exists, skipping migration');
+          }
+          
+          // Delete old stats file
+          await fs.unlink(oldStatsFilePath);
+          console.log('Removed old webhook stats file');
+        } catch (migrationErr) {
+          console.error('Error during stats migration:', migrationErr);
+        }
+      }
+    } catch (err) {
+      console.warn('Error checking for old stats file:', err);
+    }
+  }
+
+  /**
+   * A helper method to determine if a webhook execution was successful
+   */
+  private determineWebhookSuccess(result: any): boolean {
+    console.log('[WebhookServer] Determining webhook success from result structure:', JSON.stringify(result).substring(0, 300) + '...');
     
-    // Start the server
-    this.app.listen(this.port, () => {
-      console.log(`Webhook server listening on port ${this.port}`);
-    });
+    // Consider failures from obvious error indicators
+    if (!result || result.error || result.mockResponse) {
+      console.log('[WebhookServer] Found error or mockResponse - marking as failed');
+      return false;
+    }
+    
+    // FIRST: Try to extract agent results from the text payload, as this is most reliable
+    if (result.status && result.status.message && 
+        result.status.message.parts && result.status.message.parts.length > 0) {
+      try {
+        const textPart = result.status.message.parts.find((part: any) => part.type === 'text');
+        if (textPart && textPart.text) {
+          console.log('[WebhookServer] Checking text payload for Results:', textPart.text.substring(0, 100) + '...');
+          
+          // Extract the JSON between "Results: {" and the end of the JSON object
+          const resultMatch = textPart.text.match(/Results: (\{.*\})/s);
+          if (resultMatch && resultMatch[1]) {
+            try {
+              console.log('[WebhookServer] Extracted results JSON from text payload');
+              const agentResults = JSON.parse(resultMatch[1]);
+              const agentNames = Object.keys(agentResults);
+              
+              if (agentNames.length === 0) {
+                console.log('[WebhookServer] No agent results found in extracted JSON');
+                return false;
+              }
+              
+              console.log('[WebhookServer] Checking extracted results for agents:', agentNames.join(', '));
+              
+              // Check if ANY agent failed in the extracted results
+              const anyFailed = agentNames.some(agentName => {
+                const agentData = agentResults[agentName];
+                
+                // Check for error field
+                if (agentData.error) {
+                  console.log(`[WebhookServer] Agent ${agentName} has error field in extracted results`);
+                  return true;
+                }
+                
+                // Check for failed state
+                if (agentData.status && agentData.status.state === 'failed') {
+                  console.log(`[WebhookServer] Agent ${agentName} has failed state in extracted results`);
+                  return true;
+                }
+                
+                return false;
+              });
+              
+              if (anyFailed) {
+                console.log('[WebhookServer] At least one agent failed in extracted results - marking webhook as failed');
+                return false;
+              }
+            } catch (parseErr) {
+              console.error("[WebhookServer] Error parsing agent results JSON:", parseErr);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[WebhookServer] Error checking text payload for results:", err);
+      }
+    }
+    
+    // SECOND: Check for agent failures in the direct results object
+    if (result.results && typeof result.results === 'object' && !Array.isArray(result.results)) {
+      console.log('[WebhookServer] Checking direct agent results for failures');
+      
+      // Check if ANY agent has an error or failed state
+      const anyAgentFailed = Object.entries(result.results).some(([agentName, agentResult]) => {
+        // Check for error field
+        if ((agentResult as any).error) {
+          console.log(`[WebhookServer] Agent ${agentName} has an error field: ${(agentResult as any).error}`);
+          return true;
+        }
+        
+        // Check for failed state
+        if ((agentResult as any).status && (agentResult as any).status.state === 'failed') {
+          console.log(`[WebhookServer] Agent ${agentName} has failed state`);
+          return true;
+        }
+        
+        return false;
+      });
+      
+      if (anyAgentFailed) {
+        console.log('[WebhookServer] At least one agent has failed - marking webhook as failed');
+        return false;
+      }
+    }
+    
+    // THIRD: For array-type results
+    if (result.results && Array.isArray(result.results)) {
+      console.log('[WebhookServer] Found results array with', result.results.length, 'items');
+      
+      if (result.results.length === 0) {
+        return false; // No results at all
+      }
+      
+      // Check for any failed items in the array
+      const anyArrayItemFailed = result.results.some((agentResult: any) => {
+        return agentResult.error || (agentResult.status && agentResult.status.state === 'failed');
+      });
+      
+      if (anyArrayItemFailed) {
+        console.log('[WebhookServer] Found failed item in results array - marking as failed');
+        return false;
+      }
+    }
+    
+    // FOURTH: Check status state directly in result
+    if (result.status && result.status.state) {
+      if (result.status.state === 'failed') {
+        console.log('[WebhookServer] Found failed status state in top-level result');
+        return false;
+      }
+    }
+    
+    // At this point, we've checked all possible failure indicators and found none
+    // If we're still here, the webhook is considered successful
+    console.log('[WebhookServer] No failure indicators found - marking as successful');
+    return true;
   }
 } 

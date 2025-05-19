@@ -19,7 +19,7 @@
     "test:github": "bash src/test/test-github-agent.sh",
     "test:salesforce": "bash src/test/test-salesforce-agent.sh",
     "test:host": "bash src/test/test-host-agent.sh",
-    "test:webhook": "curl -X POST http://localhost:3000/webhook/meeting-transcript -H \"Content-Type: application/json\" -d '{\"transcript\": \"$(cat src/test/sample-transcript.txt)\"}' | jq",
+    "test:webhook": "bash src/test/test-webhook.sh",
     "start:all": "bash src/test/start-all-agents.sh",
     "stop:all": "bash src/test/stop-all-agents.sh",
     "build": "tsc"

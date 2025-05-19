@@ -1,21 +1,47 @@
 :root {
-  --matrix-green: #3a9c5a;
-  --matrix-dark-green: #0A3622;
-  --matrix-lighter-green: #4DCCAA;
-  --dark-bg: #121212;
-  --darker-bg: #0a0a0a;
-  --card-bg: #1e1e1e;
+  --primary: #2196f3;
+  --primary-dark: #1976d2;
+  --primary-light: #bbdefb;
+  --accent: #ff4081;
+  --success: #66bb6a;
+  --success-dark: #43a047;
+  --danger: #ef5350;
+  --danger-dark: #e53935;
+  --warning: #ffb74d;
+  --warning-dark: #ff9800;
+  --dark-bg: #1e1e1e;
+  --darker-bg: #161616;
+  --card-bg: #252525;
   --card-header-bg: #2c2c2c;
-  --text-color: #e0e0e0;
-  --muted-text: #a0a0a0;
-  --border-color: #333;
-  --terminal-text: #33aa66;
-  --card-description: #c0c0c0;
-  --stats-bg: #2a2a2a;
-  --stats-card-bg: #141414;
+  --text-color: #ffffff;
+  --text-muted: #b0b0b0;
+  --border-color: #3e3e3e;
+  --terminal-text: #4db6ac;
+  --card-description: #e0e0e0;
+  --stats-bg: #212121;
+  --stats-card-bg: #1a1a1a;
   --stats-number: #ffffff;
   --stats-label: #e0e0e0;
-  --stats-header-bg: #333;
+  --stats-header-bg: #2c2c2c;
+  --accent-color: #26a69a;
+  --accent-color-dark: #00796b;
+  --accent-color-light: #4db6ac;
+  --danger-color: #f44336;
+  --danger-color-dark: #d32f2f;
+  --success-color: #4caf50;
+  --success-color-dark: #388e3c;
+  --warning-color: #ff9800;
+  --warning-color-dark: #f57c00;
+  
+  /* Webhook details specific colors */
+  --webhook-json-bg: #1a1a1a;
+  --webhook-json-text: #f8f8f2;
+  --webhook-response-bg: rgba(33, 150, 243, 0.15);
+  --webhook-response-border: #2196f3;
+  --webhook-danger-bg: rgba(239, 83, 80, 0.15);
+  --webhook-danger-border: #ef5350;
+  --webhook-success-bg: rgba(102, 187, 106, 0.15);
+  --webhook-success-border: #66bb6a;
 }
 
 body {
@@ -63,7 +89,7 @@ body {
   height: calc(100vh - 150px);
   overflow-y: auto;
   margin-top: 20px;
-  border: 1px solid var(--matrix-dark-green);
+  border: 1px solid var(--primary-dark);
   white-space: pre-wrap;
   word-break: break-word;
   position: relative;
@@ -81,6 +107,7 @@ body {
   z-index: 2;
   flex: 1;
   min-height: 0;
+  color: var(--terminal-text);
 }
 
 .terminal-line {
@@ -121,7 +148,7 @@ body {
   padding: 6px;
   max-height: none;
   overflow: visible;
-  border-left: 2px solid var(--matrix-green);
+  border-left: 2px solid var(--primary);
 }
 
 /* Custom JSON highlighting colors to match terminal */
@@ -154,12 +181,12 @@ body {
 }
 
 .agent-item:hover {
-  background-color: rgba(10, 54, 34, 0.5);
+  background-color: rgba(33, 150, 243, 0.1);
 }
 
 .agent-item.active {
-  background-color: var(--matrix-dark-green);
-  border-left: 3px solid var(--matrix-green);
+  background-color: var(--primary-dark);
+  border-left: 3px solid var(--primary);
   font-weight: bold;
 }
 
@@ -172,11 +199,11 @@ body {
 }
 
 .status-active {
-  background-color: var(--matrix-green);
+  background-color: var(--success);
 }
 
 .status-inactive {
-  background-color: #ff4d4d;
+  background-color: var(--danger);
 }
 
 .navbar {
@@ -187,7 +214,7 @@ body {
 }
 
 .navbar-brand {
-  color: var(--matrix-green) !important;
+  color: var(--primary) !important;
   font-weight: 600;
 }
 
@@ -196,8 +223,8 @@ body {
 }
 
 .nav-link.active {
-  color: var(--matrix-green) !important;
-  border-bottom: 2px solid var(--matrix-green);
+  color: var(--primary) !important;
+  border-bottom: 2px solid var(--primary);
 }
 
 .card {
@@ -218,7 +245,7 @@ body {
 }
 
 .card-text {
-  color: var(--card-description);
+  color: var(--text-muted);
 }
 
 .webhook-url {
@@ -236,7 +263,7 @@ body {
 }
 
 .card .badge {
-  background-color: var(--matrix-dark-green) !important;
+  background-color: var(--primary-dark) !important;
   color: var(--text-color) !important;
   font-weight: normal;
   padding: 5px 8px;
@@ -255,7 +282,7 @@ pre {
   font-family: 'Courier New', monospace;
   background-color: #000;
   color: var(--terminal-text);
-  border: 1px solid var(--matrix-dark-green);
+  border: 1px solid var(--primary-dark);
 }
 
 textarea, input, select {
@@ -265,24 +292,24 @@ textarea, input, select {
 }
 
 .btn-primary {
-  background-color: var(--matrix-dark-green) !important;
-  border-color: var(--matrix-green) !important;
-  color: var(--matrix-green) !important;
+  background-color: var(--primary-dark) !important;
+  border-color: var(--primary) !important;
+  color: white !important;
 }
 
 .btn-primary:hover {
-  background-color: var(--matrix-dark-green) !important;
-  filter: brightness(120%);
+  background-color: var(--primary) !important;
+  filter: brightness(110%);
 }
 
 .btn-outline-primary {
-  color: var(--matrix-green) !important;
-  border-color: var(--matrix-green) !important;
+  color: var(--primary) !important;
+  border-color: var(--primary) !important;
   background-color: transparent !important;
 }
 
 .btn-outline-primary:hover {
-  background-color: rgba(0, 255, 65, 0.1) !important;
+  background-color: rgba(33, 150, 243, 0.1) !important;
 }
 
 .btn-secondary {
@@ -291,9 +318,9 @@ textarea, input, select {
 }
 
 .btn-danger {
-  background-color: #5a0000 !important;
-  border-color: #ff4d4d !important;
-  color: #ff4d4d !important;
+  background-color: var(--danger-dark) !important;
+  border-color: var(--danger) !important;
+  color: white !important;
 }
 
 .modal-content {
@@ -306,14 +333,14 @@ textarea, input, select {
 }
 
 .form-text {
-  color: var(--muted-text) !important;
+  color: var(--text-muted) !important;
 }
 
 /* Pulse animation for active status */
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.7); }
-  70% { box-shadow: 0 0 0 5px rgba(0, 255, 65, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(102, 187, 106, 0.7); }
+  70% { box-shadow: 0 0 0 5px rgba(102, 187, 106, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(102, 187, 106, 0); }
 }
 
 .pulse {
@@ -328,7 +355,7 @@ textarea, input, select {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  opacity: 0.15;
+  opacity: 0.05;
   overflow: hidden;
   z-index: 0;
 }
@@ -349,31 +376,33 @@ textarea, input, select {
 /* Auto-scroll paused indicator */
 .auto-scroll-paused {
   position: absolute;
-  bottom: 15px;
-  right: 15px;
-  background-color: rgba(0, 0, 0, 0.8);
-  border: 1px solid var(--matrix-green);
-  color: var(--matrix-green);
+  top: 10px;
+  right: 10px;
+  background-color: rgba(0, 0, 0, 0.7);
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 12px;
-  z-index: 5;
+  color: #ccc;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.resume-btn {
-  background-color: var(--matrix-dark-green);
-  color: var(--text-color);
+.auto-scroll-paused .resume-btn {
+  background-color: var(--success);
+  color: white;
   border: none;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 3px;
-  margin-left: 8px;
-  cursor: pointer;
   font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.resume-btn:hover {
-  background-color: var(--matrix-green);
-  color: #000;
+.auto-scroll-paused .resume-btn:hover {
+  background-color: var(--success-dark);
 }
 
 .agent-card {
@@ -394,7 +423,7 @@ textarea, input, select {
 }
 
 .table-dark tbody tr:hover {
-  background-color: var(--matrix-dark-green);
+  background-color: rgba(33, 150, 243, 0.1);
 }
 
 .table-dark th, .table-dark td {
@@ -404,15 +433,15 @@ textarea, input, select {
 
 /* Statistics Dashboard Styling */
 #webhook-stats .card {
-  background-color: var(--stats-bg);
+  background-color: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
   overflow: hidden;
 }
 
 #webhook-stats .card-header {
-  background-color: var(--stats-header-bg);
-  color: var(--matrix-lighter-green);
+  background-color: var(--card-header-bg);
+  color: var(--primary);
   font-weight: 600;
   font-size: 16px;
   text-transform: uppercase;
@@ -422,12 +451,12 @@ textarea, input, select {
 }
 
 #webhook-stats .card-body {
-  background-color: var(--stats-bg);
+  background-color: var(--card-bg);
   padding: 20px;
 }
 
 #webhook-stats .bg-dark {
-  background-color: var(--stats-card-bg) !important;
+  background-color: var(--darker-bg) !important;
   border-radius: 5px;
   transition: transform 0.2s;
 }
@@ -439,7 +468,7 @@ textarea, input, select {
 
 #webhook-stats h2, 
 #webhook-stats h3 {
-  color: var(--stats-number);
+  color: var(--text-color);
   font-weight: 600;
   margin-bottom: 8px;
   font-size: 32px;
@@ -450,7 +479,7 @@ textarea, input, select {
 }
 
 #webhook-stats p {
-  color: var(--stats-label);
+  color: var(--text-muted);
   font-size: 14px;
   font-weight: 500;
   text-transform: uppercase;
@@ -470,7 +499,7 @@ textarea, input, select {
 }
 
 #webhook-stats .table-dark thead th {
-  background-color: var(--stats-header-bg);
+  background-color: var(--card-header-bg);
   color: var(--text-color);
   font-weight: 600;
   text-transform: uppercase;
@@ -493,8 +522,13 @@ textarea, input, select {
 }
 
 #webhook-stats .badge.bg-success {
-  background-color: var(--matrix-dark-green) !important;
-  color: var(--matrix-lighter-green) !important;
+  background-color: var(--success-dark) !important;
+  color: white !important;
+}
+
+#webhook-stats .badge.bg-danger {
+  background-color: var(--danger-dark) !important;
+  color: white !important;
 }
 
 #webhook-stats .row {
@@ -517,4 +551,342 @@ textarea, input, select {
 /* Dashboard will be shown by default */
 #agent-terminal {
   display: block;
+}
+
+/* Webhook table styles */
+.webhook-table {
+  margin-bottom: 0;
+}
+
+.webhook-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.webhook-row:hover {
+  background-color: rgba(33, 150, 243, 0.1) !important;
+}
+
+/* Webhook details modal */
+.modal-content {
+  border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border-color);
+}
+
+.json-highlight {
+  background-color: #1a1a1a;
+  color: #f8f8f2;
+  border-radius: 4px;
+  padding: 10px;
+  overflow: auto;
+  max-height: 300px;
+  font-family: 'Courier New', monospace;
+}
+
+/* Accordion styles for agent details */
+.accordion-item {
+  border: 1px solid var(--border-color);
+  margin-bottom: 0.5rem;
+  background-color: var(--card-bg);
+}
+
+.accordion-button {
+  padding: 1rem 1.25rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: var(--card-header-bg);
+  color: var(--primary);
+  box-shadow: none;
+}
+
+.accordion-button:focus {
+  box-shadow: none;
+  border-color: var(--border-color);
+}
+
+.accordion-button::after {
+  filter: invert(1);
+}
+
+.accordion-button.bg-danger {
+  background-color: rgba(239, 83, 80, 0.15) !important;
+  color: #f5f5f5 !important;
+}
+
+.accordion-button.bg-success {
+  background-color: rgba(102, 187, 106, 0.15) !important;
+  color: #f5f5f5 !important;
+}
+
+.bg-danger.bg-opacity-25 {
+  background-color: rgba(239, 83, 80, 0.25) !important;
+}
+
+.bg-success.bg-opacity-25 {
+  background-color: rgba(102, 187, 106, 0.25) !important;
+}
+
+.agent-message.bg-danger.bg-opacity-10 {
+  background-color: rgba(239, 83, 80, 0.1) !important;
+  border-left: 3px solid var(--danger);
+}
+
+.agent-message.bg-success.bg-opacity-10 {
+  background-color: rgba(102, 187, 106, 0.1) !important;
+  border-left: 3px solid var(--success);
+}
+
+/* Matrix and Terminal Colors */
+.matrix-rain {
+  opacity: 0.05;
+}
+
+/* Badge and Status Colors */
+.badge.bg-success {
+  background-color: var(--success-dark) !important;
+  color: white !important;
+}
+
+.badge.bg-danger {
+  background-color: var(--danger-dark) !important;
+  color: white !important;
+}
+
+/* Dashboard header */
+.dashboard-title {
+  color: var(--primary);
+  font-weight: 600;
+  margin-bottom: 0;
+  font-size: 1.75rem;
+  padding: 0.25rem 0;
+}
+
+.dashboard-header {
+  font-weight: bold;
+  color: var(--primary);
+  letter-spacing: 1px;
+}
+
+.dashboard-card {
+  padding: 1.5rem;
+}
+
+/* Enhanced styles for webhook details modal */
+.agent-message {
+  border-left: 3px solid var(--primary);
+}
+
+.list-group-item.bg-dark {
+  background-color: var(--darker-bg) !important;
+  border: 1px solid var(--border-color);
+}
+
+.border-success {
+  border-color: rgba(102, 187, 106, 0.4) !important;
+}
+
+/* Make the modal wider to show more content */
+#webhookDetailsModal .modal-xl {
+  max-width: 1200px;
+}
+
+#webhookDetailsModal pre {
+  margin-bottom: 0;
+}
+
+#webhookDetailsModal h6 {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Data Accordion Styles */
+#webhookDataAccordion .accordion-item {
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  background-color: var(--darker-bg);
+}
+
+#webhookDataAccordion .accordion-button {
+  background-color: var(--card-header-bg);
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+#webhookDataAccordion .accordion-button:not(.collapsed) {
+  background-color: var(--primary-dark);
+  color: white;
+}
+
+#webhookDataAccordion .accordion-body {
+  padding: 1rem;
+  background-color: var(--darker-bg);
+}
+
+#webhookDataAccordion .json-highlight {
+  margin: 0;
+  background-color: var(--darker-bg);
+  font-size: 0.9rem;
+  max-height: 400px;
+}
+
+/* Enhanced styles for webhook details modal */
+#webhookDetailsModal {
+  color: var(--text-color);
+}
+
+#webhookDetailsModal .modal-content {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+}
+
+#webhookDetailsModal .modal-header {
+  background-color: var(--card-header-bg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+#webhookDetailsModal .modal-body {
+  background-color: var(--card-bg);
+  padding: 1.5rem;
+}
+
+#webhookDetailsModal h6 {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+#webhookDetailsModal .agent-message {
+  background-color: var(--webhook-response-bg) !important;
+  border-left: 3px solid var(--webhook-response-border);
+  color: var(--text-color);
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+
+#webhookDetailsModal .agent-message.bg-danger {
+  background-color: var(--webhook-danger-bg) !important;
+  border-left: 3px solid var(--webhook-danger-border);
+}
+
+#webhookDetailsModal .agent-message.bg-success {
+  background-color: var(--webhook-success-bg) !important;
+  border-left: 3px solid var(--webhook-success-border);
+}
+
+/* Webhook modal accordion styles */
+#webhookDetailsModal .accordion-item {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  margin-bottom: 0.5rem;
+}
+
+#webhookDetailsModal .accordion-button {
+  background-color: var(--card-header-bg);
+  color: var(--text-color);
+  padding: 0.75rem 1rem;
+}
+
+#webhookDetailsModal .accordion-button:not(.collapsed) {
+  background-color: var(--primary-dark);
+  color: white;
+}
+
+#webhookDetailsModal .accordion-button.bg-danger {
+  background-color: var(--webhook-danger-bg) !important;
+  border-left: 3px solid var(--webhook-danger-border);
+  color: white;
+}
+
+#webhookDetailsModal .accordion-button.bg-success {
+  background-color: var(--webhook-success-bg) !important;
+  border-left: 3px solid var(--webhook-success-border);
+  color: white;
+}
+
+#webhookDetailsModal .badge {
+  font-weight: normal;
+  font-size: 0.75rem;
+  padding: 0.35em 0.65em;
+}
+
+/* JSON display in webhook modal */
+#webhookDetailsModal pre.json-highlight {
+  background-color: var(--webhook-json-bg);
+  color: var(--webhook-json-text);
+  border-radius: 4px;
+  padding: 10px;
+  margin: 0;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  max-height: 400px;
+  overflow: auto;
+}
+
+/* Agent details ID/status rows */
+#webhookDetailsModal .agent-details {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+#webhookDetailsModal .agent-details p {
+  margin-bottom: 0.5rem;
+  color: var(--text-color);
+}
+
+#webhookDetailsModal .agent-details strong {
+  color: var(--primary-light);
+}
+
+/* Webhook data accordion styling */
+#webhookDataAccordion {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.5rem;
+}
+
+#webhookDataAccordion .accordion-item {
+  background-color: var(--darker-bg);
+  border: 1px solid var(--border-color);
+}
+
+#webhookDataAccordion .accordion-button {
+  background-color: var(--card-header-bg);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+#webhookDataAccordion .accordion-button:hover {
+  color: var(--text-color);
+}
+
+#webhookDataAccordion .accordion-button:not(.collapsed) {
+  background-color: var(--primary-dark);
+  color: white;
+}
+
+#webhookDataAccordion .accordion-body {
+  padding: 0;
+}
+
+#webhookDataAccordion .json-highlight {
+  border-radius: 0;
+  border: none;
+  margin: 0;
+  max-height: 400px;
 } 

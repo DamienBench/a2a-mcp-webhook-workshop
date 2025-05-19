@@ -38,76 +38,35 @@ export const ai = genkit({
 // Load the prompt defined in salesforce_agent.prompt
 export const salesforceAgentPrompt = ai.prompt("salesforce_agent");
 
+// MCP server URL from environment variable
+const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "https://mcp.zapier.com";
+
 // Define the Salesforce Create Record tool
 export const salesforceCreateRecord = ai.defineTool(
   {
     name: "salesforce_create_record",
-    description: "Create a new record in Salesforce",
+    description: "Creates a new record in Salesforce",
     inputSchema: z.object({
-      object: z.string().describe("The type of Salesforce object to create (e.g., Lead, Contact, Account, Opportunity)"),
-      name: z.string().optional().describe("The name of the record"),
-      company: z.string().optional().describe("The company name (for Lead, Account)"),
-      email: z.string().optional().describe("The email address"),
-      phone: z.string().optional().describe("The phone number")
-    }).catchall(z.any()), // Allow additional fields
+      instructions: z.string().describe("Natural language instructions for creating the record, e.g., 'Create a contact named John Smith with company Acme Corp'"),
+      object: z.string().describe("The type of Salesforce object to create (e.g., Contact, Account, Opportunity)"),
+    }),
   },
   async (inputParams) => {
     console.log("[SalesforceAgent MCP] Preparing to create record with params:", JSON.stringify(inputParams, null, 2));
     
-    // Extract parameters
-    const { object, name, company, email, phone, ...restParams } = inputParams;
-    
-    // Build field list for instructions
-    let fieldList = [];
-    if (name) fieldList.push(`name: ${name}`);
-    if (company) fieldList.push(`company: ${company}`);
-    if (email) fieldList.push(`email: ${email}`);
-    if (phone) fieldList.push(`phone: ${phone}`);
-    Object.entries(restParams).forEach(([key, value]) => {
-      fieldList.push(`${key}: ${value}`);
-    });
-    
-    // MCP requires 'instructions' field and 'object'
-    const mcpArgs = {
-      instructions: `Create a new ${object} with the following fields: ${fieldList.join(', ')}`,
-      object: object || "Lead",
-      ...restParams // Pass through any other parameters
-    };
-    
-    console.log("[SalesforceAgent MCP] Sending with args:", JSON.stringify(mcpArgs, null, 2));
-    
     try {
-      const result = await createSalesforceRecord(mcpArgs);
-      console.log("[SalesforceAgent MCP] Result:", JSON.stringify(result, null, 2));
+      const resp = await createSalesforceRecord({
+        instructions: inputParams.instructions,
+        object: inputParams.object
+      });
       
-      // Parse the MCP response
-      let parsedResult = null;
-      let recordId = `SF-${Date.now()}`; // Default ID
+      console.log("[SalesforceAgent MCP] Result:", JSON.stringify(resp, null, 2));
       
-      if (result?.content && result.content[0]?.text) {
-        try {
-          parsedResult = JSON.parse(result.content[0].text);
-          console.log("[SalesforceAgent MCP] Parsed result:", JSON.stringify(parsedResult, null, 2));
-          
-          if (parsedResult?.results?.[0]?.id) {
-            recordId = parsedResult.results[0].id;
-          }
-        } catch (error) {
-          console.error("[SalesforceAgent MCP] Error parsing response:", error);
-        }
-      }
-      
-      return { 
-        success: true, 
-        object,
-        id: recordId,
-        fields: { name, company, email, phone, ...restParams }
-      };
+      return resp;
     } catch (error) {
       console.error("[SalesforceAgent MCP] Error creating record:", error);
       return { 
-        success: false, 
-        object,
+        isError: true, 
         error: error.message 
       };
     }
@@ -118,60 +77,28 @@ export const salesforceCreateRecord = ai.defineTool(
 export const salesforceFindRecord = ai.defineTool(
   {
     name: "salesforce_find_record",
-    description: "Find an existing record in Salesforce",
+    description: "Find an existing record in Salesforce by ID or search criteria",
     inputSchema: z.object({
-      object: z.string().describe("The type of Salesforce object to find (e.g., Lead, Contact, Account, Opportunity)"),
-      id: z.string().describe("The ID of the record to find")
-    }).catchall(z.any()), // Allow additional search criteria
+      instructions: z.string().describe("Natural language instructions for finding the record, e.g., 'Find contact named John Smith'"),
+      object: z.string().describe("The type of Salesforce object to find (e.g., Contact, Account, Opportunity)"),
+    }),
   },
   async (inputParams) => {
     console.log("[SalesforceAgent MCP] Preparing to find record with params:", JSON.stringify(inputParams, null, 2));
     
-    // Extract parameters
-    const { object, id, ...restParams } = inputParams;
-    
-    // MCP requires 'instructions' field and 'object'
-    const mcpArgs = {
-      instructions: `Find the ${object} with ID: ${id}`,
-      object: object || "Lead",
-      ...restParams
-    };
-    
-    console.log("[SalesforceAgent MCP] Sending with args:", JSON.stringify(mcpArgs, null, 2));
-    
     try {
-      const result = await findSalesforceRecord(mcpArgs);
-      console.log("[SalesforceAgent MCP] Result:", JSON.stringify(result, null, 2));
+      const resp = await findSalesforceRecord({
+        instructions: inputParams.instructions,
+        object: inputParams.object
+      });
       
-      // Parse the MCP response
-      let parsedResult = null;
-      let fields = {};
+      console.log("[SalesforceAgent MCP] Result:", JSON.stringify(resp, null, 2));
       
-      if (result?.content && result.content[0]?.text) {
-        try {
-          parsedResult = JSON.parse(result.content[0].text);
-          console.log("[SalesforceAgent MCP] Parsed result:", JSON.stringify(parsedResult, null, 2));
-          
-          if (parsedResult?.results?.[0]) {
-            fields = parsedResult.results[0];
-          }
-        } catch (error) {
-          console.error("[SalesforceAgent MCP] Error parsing response:", error);
-        }
-      }
-      
-      return { 
-        success: true, 
-        object,
-        id,
-        fields
-      };
+      return resp;
     } catch (error) {
       console.error("[SalesforceAgent MCP] Error finding record:", error);
       return { 
-        success: false, 
-        object,
-        id,
+        isError: true, 
         error: error.message 
       };
     }
@@ -184,76 +111,38 @@ export const salesforceUpdateRecord = ai.defineTool(
     name: "salesforce_update_record",
     description: "Update an existing record in Salesforce",
     inputSchema: z.object({
-      object: z.string().describe("The type of Salesforce object to update (e.g., Lead, Contact, Account, Opportunity)"),
-      id: z.string().describe("The ID of the record to update"),
-      name: z.string().optional().describe("The updated name"),
-      company: z.string().optional().describe("The updated company name"),
-      email: z.string().optional().describe("The updated email address"),
-      phone: z.string().optional().describe("The updated phone number")
-    }).catchall(z.any()), // Allow additional fields to update
+      instructions: z.string().describe("Natural language instructions for updating the record, e.g., 'Update contact John Smith set company to Acme Corp'"),
+      object: z.string().describe("The type of Salesforce object to update (e.g., Contact, Account, Opportunity)"),
+    }),
   },
   async (inputParams) => {
     console.log("[SalesforceAgent MCP] Preparing to update record with params:", JSON.stringify(inputParams, null, 2));
     
-    // Extract parameters
-    const { object, id, name, company, email, phone, ...restParams } = inputParams;
-    
-    // Build field list for instructions
-    let fieldList = [];
-    if (name) fieldList.push(`name: ${name}`);
-    if (company) fieldList.push(`company: ${company}`);
-    if (email) fieldList.push(`email: ${email}`);
-    if (phone) fieldList.push(`phone: ${phone}`);
-    Object.entries(restParams).forEach(([key, value]) => {
-      fieldList.push(`${key}: ${value}`);
-    });
-    
-    // MCP requires 'instructions' field and 'object'
-    const mcpArgs = {
-      instructions: `Update the ${object} with ID: ${id} with the following fields: ${fieldList.join(', ')}`,
-      object: object || "Lead",
-      ...restParams
-    };
-    
-    console.log("[SalesforceAgent MCP] Sending with args:", JSON.stringify(mcpArgs, null, 2));
-    
     try {
-      const result = await updateSalesforceRecord(mcpArgs);
-      console.log("[SalesforceAgent MCP] Result:", JSON.stringify(result, null, 2));
+      const resp = await updateSalesforceRecord({
+        instructions: inputParams.instructions,
+        object: inputParams.object
+      });
       
-      // Parse the MCP response
-      let parsedResult = null;
+      console.log("[SalesforceAgent MCP] Result:", JSON.stringify(resp, null, 2));
       
-      if (result?.content && result.content[0]?.text) {
-        try {
-          parsedResult = JSON.parse(result.content[0].text);
-          console.log("[SalesforceAgent MCP] Parsed result:", JSON.stringify(parsedResult, null, 2));
-        } catch (error) {
-          console.error("[SalesforceAgent MCP] Error parsing response:", error);
-        }
-      }
-      
-      return { 
-        success: true, 
-        object,
-        id,
-        updatedFields: { name, company, email, phone, ...restParams }
-      };
+      return resp;
     } catch (error) {
       console.error("[SalesforceAgent MCP] Error updating record:", error);
       return { 
-        success: false, 
-        object,
-        id,
+        isError: true, 
         error: error.message 
       };
     }
   }
 );
 
+
+
 // Function to get all available Salesforce tools
 export function getSalesforceTools() {
-  return [salesforceCreateRecord, salesforceFindRecord, salesforceUpdateRecord];
+  return [salesforceCreateRecord];
+  // return [salesforceCreateRecord, salesforceFindRecord, salesforceUpdateRecord];
 }
 
 export { z }; 

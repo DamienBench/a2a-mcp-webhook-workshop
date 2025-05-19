@@ -33,14 +33,17 @@ function start_agent() {
   echo "$agent_name Agent started in background with PID $!. Log file: $log_file"
 }
 
-# First start the Host Agent
-start_agent "host" "41241" "npx tsx src/agents/host/index.ts"
-sleep 2  # Give the Host Agent a moment to start
-
-# Then start the sub-agents
+# First start the sub-agents so they're ready when the host agent starts
 start_agent "slack" "41243" "npx tsx src/agents/slack/index.ts"
 start_agent "salesforce" "41244" "npx tsx src/agents/salesforce/index.ts"
 start_agent "github" "41245" "npx tsx src/agents/github/index.ts"
+
+# Give the sub-agents time to start up completely before the host agent tries to connect
+echo "Waiting for sub-agents to start up..."
+sleep 5
+
+# Then start the Host Agent
+start_agent "host" "41240" "npx tsx src/agents/host/index.ts"
 
 # Finally start the webhook server
 start_agent "webhook" "3000" "npx tsx src/webhooks/index.ts"

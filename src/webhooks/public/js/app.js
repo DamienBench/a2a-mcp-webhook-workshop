@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Globals
   const WEBHOOK_API_URL = '/api/webhooks';
   const TEST_WEBHOOK_API_URL = '/api/test/webhook';
+  const STATS_API_URL = '/api/stats';
   let currentWebhooks = [];
   let webhookStats = {
     totalProcessed: 0,
@@ -33,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const webhookServerStatus = document.getElementById('webhookServerStatus');
 
   // Main content sections
+  const dashboardSection = document.getElementById('dashboard');
   const agentTerminalSection = document.getElementById('agent-terminal');
   const webhooksSection = document.getElementById('webhooks');
   const testSection = document.getElementById('test');
@@ -89,12 +91,20 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
   
   // Initialize the application
   function init() {
+    console.log("Initializing application");
+    
+    // Create dashboard first to ensure it exists
+    createDashboardUI();
+    
+    // Then set up other components
     setupEventListeners();
     fetchWebhooks();
     setupAgentSidebar();
     initializeTerminal();
     setupNavigation();
     updateServerStatus();
+    
+    // Initialize dashboard with more robust error handling
     initDashboard();
     
     // Hide all agent items active class
@@ -103,94 +113,223 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
     });
     
     // Make sure the UI is showing the correct section based on URL hash
-    handleNavigation(window.location.hash || '#agent-terminal');
-    
-    // Make sure terminal container is hidden on initial load since no agent is selected
-    const terminalContainer = document.querySelector('.terminal-container');
-    if (terminalContainer) {
-      terminalContainer.style.display = 'none';
-    }
-    
-    // Hide the agent header on initial load
-    const agentHeader = document.querySelector('#agent-terminal .d-flex.justify-content-between.align-items-center');
-    if (agentHeader) {
-      agentHeader.style.display = 'none';
-    }
-    
-    // Make sure stats are visible on initial load
-    const statsContainer = document.getElementById('webhook-stats');
-    if (statsContainer) {
-      statsContainer.style.display = 'block';
-    }
+    const currentHash = window.location.hash || '#dashboard';
+    handleNavigation(currentHash);
   }
   
   // Initialize dashboard with webhook statistics
   function initDashboard() {
-    // Create mock statistics for demonstration
-    webhookStats = {
-      totalProcessed: 15,
-      agentInvocations: {
-        host: 15,
-        github: 8,
-        slack: 12,
-        salesforce: 6
-      },
-      recentWebhooks: [
-        { id: 'meeting-transcript', name: 'Meeting Transcript', timestamp: new Date(Date.now() - 1000*60*5).toISOString(), status: 'success' },
-        { id: 'meeting-transcript', name: 'Meeting Transcript', timestamp: new Date(Date.now() - 1000*60*30).toISOString(), status: 'success' },
-        { id: 'meeting-transcript', name: 'Meeting Transcript', timestamp: new Date(Date.now() - 1000*60*60).toISOString(), status: 'success' }
-      ]
-    };
-    
-    updateDashboard();
+    try {
+      // Ensure dashboard exists before trying to update it
+      if (!document.getElementById('webhook-stats')) {
+        console.log("Dashboard container missing during initialization, creating it");
+        createDashboardUI();
+      } else {
+        console.log("Dashboard already exists, just updating stats");
+      }
+      
+      // Fetch real statistics from the API
+      fetchWebhookStats();
+      
+      // No need for setInterval here anymore as fetchWebhookStats has its own refresh mechanism
+    } catch (error) {
+      console.error("Error during dashboard initialization:", error);
+      
+      // Fallback - create a basic dashboard with default data
+      if (!document.getElementById('webhook-stats')) {
+        console.log("Creating default dashboard due to error");
+        createDashboardUI();
+      }
+    }
+  }
+  
+  // Fetch webhook statistics from API
+  async function fetchWebhookStats() {
+    try {
+      console.log("Fetching webhook stats from API");
+      const response = await fetch(STATS_API_URL);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch stats: ${response.status} ${response.statusText}`);
+      }
+      
+      // Update global stats object
+      const data = await response.json();
+      console.log("Stats received:", data);
+      
+      // Check if there are any processing webhooks
+      const hasProcessingWebhooks = data.recentWebhooks.some(webhook => webhook.status === 'processing');
+      
+      // Update the stats object
+      webhookStats = data;
+      
+      // Update dashboard with new stats
+      updateDashboard();
+      
+      // Schedule next refresh - more frequently if there are processing webhooks
+      const refreshInterval = hasProcessingWebhooks ? 2000 : 30000; // 2 seconds vs 30 seconds
+      setTimeout(fetchWebhookStats, refreshInterval);
+    } catch (err) {
+      console.error('Error fetching webhook stats:', err);
+      
+      // If we have an error, just use the default stats that are already initialized
+      console.log("Using default stats due to fetch error");
+      updateDashboard();
+      
+      // Try again in 30 seconds
+      setTimeout(fetchWebhookStats, 30000);
+    }
   }
   
   // Update dashboard with latest webhook statistics
   function updateDashboard() {
-    // Create dashboard UI if it doesn't exist
+    console.log("Updating dashboard with stats:", webhookStats);
+    
+    // Create or update dashboard UI
     if (!document.getElementById('webhook-stats')) {
-      const dashboardHtml = `
-        <div id="webhook-stats" class="row mb-4">
-          <div class="col-md-12 mb-4">
-            <div class="card">
-              <div class="card-header">
-                Webhook Statistics
+      console.log("Dashboard element not found, creating new one");
+      createDashboardUI();
+      
+      // Make sure it's visible in agent-terminal section
+      const agentTerminalSection = document.getElementById('agent-terminal');
+      if (agentTerminalSection) {
+        agentTerminalSection.style.display = 'block';
+      }
+      
+      // Hide terminal container if it exists
+      const terminalContainer = document.querySelector('.terminal-container');
+      if (terminalContainer) {
+        terminalContainer.style.display = 'none';
+      }
+    } else {
+      console.log("Dashboard element found, updating content");
+      // Update existing dashboard with new data
+      updateDashboardContent();
+    }
+  }
+  
+  // Create initial dashboard UI
+  function createDashboardUI() {
+    console.log("Creating dashboard UI");
+    const dashboardHtml = `
+      <div id="webhook-stats" class="row mb-4">
+        <div class="col-md-12 mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="dashboard-title">
+              <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+            </h3>
+          </div>
+          <div class="card">
+            <div class="card-header dashboard-header">
+              WEBHOOK STATISTICS
+            </div>
+            <div class="card-body dashboard-card">
+              <div class="row">
+                <div class="col-md-12">
+                  <h5 class="mb-3 text-light">Agent Invocations</h5>
+                  <div class="row">
+                    <div class="col-md-3 text-center mb-3">
+                      <div class="card bg-dark">
+                        <div class="card-body p-2">
+                          <h3 class="text-light" id="host-agent-count">${webhookStats.agentInvocations.host}</h3>
+                          <p class="mb-0">HOST AGENT</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                      <div class="card bg-dark">
+                        <div class="card-body p-2">
+                          <h3 class="text-light" id="github-agent-count">${webhookStats.agentInvocations.github}</h3>
+                          <p class="mb-0">GITHUB AGENT</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                      <div class="card bg-dark">
+                        <div class="card-body p-2">
+                          <h3 class="text-light" id="slack-agent-count">${webhookStats.agentInvocations.slack}</h3>
+                          <p class="mb-0">SLACK AGENT</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                      <div class="card bg-dark">
+                        <div class="card-body p-2">
+                          <h3 class="text-light" id="salesforce-agent-count">${webhookStats.agentInvocations.salesforce}</h3>
+                          <p class="mb-0">SALESFORCE AGENT</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="card-body">
-                <div class="row">
-                  <div class="col-md-12">
-                    <h5 class="mb-3 text-light">Agent Invocations</h5>
-                    <div class="row">
-                      <div class="col-md-3 text-center mb-3">
-                        <div class="card bg-dark">
-                          <div class="card-body p-2">
-                            <h3 class="text-light">${webhookStats.agentInvocations.host}</h3>
-                            <p class="mb-0">HOST AGENT</p>
-                          </div>
+              
+              <div class="row mt-4">
+                <div class="col-md-12">
+                  <h5 class="mb-3 text-light">Recent Webhook Invocations</h5>
+                  <div class="table-responsive">
+                    <table class="table table-dark table-hover webhook-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>NAME</th>
+                          <th>TIMESTAMP</th>
+                          <th>STATUS</th>
+                        </tr>
+                      </thead>
+                      <tbody id="recent-webhooks-table">
+                        ${generateWebhookTableRows(webhookStats.recentWebhooks)}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Webhook Details Modal -->
+      <div class="modal fade" id="webhookDetailsModal" tabindex="-1" aria-labelledby="webhookDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+          <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+              <h5 class="modal-title" id="webhookDetailsModalLabel">Webhook Invocation Details</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="webhookDetailsModalBody">
+              <!-- Agent Details Section (At the top) -->
+              <div class="row" id="agentDetailsContainer">
+                <div class="col-12">
+                  <h6>Agent Details</h6>
+                  <div id="agentDetailsContent"></div>
+                </div>
+              </div>
+              
+              <!-- JSON Data Section (At the bottom, collapsed by default) -->
+              <div class="row mt-4">
+                <div class="col-12">
+                  <div class="accordion" id="webhookDataAccordion">
+                    <div class="accordion-item">
+                      <h2 class="accordion-header" id="requestDataHeader">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#requestDataCollapse" aria-expanded="false" aria-controls="requestDataCollapse">
+                          <i class="fas fa-arrow-right me-2"></i> Request Payload
+                        </button>
+                      </h2>
+                      <div id="requestDataCollapse" class="accordion-collapse collapse" aria-labelledby="requestDataHeader" data-bs-parent="#webhookDataAccordion">
+                        <div class="accordion-body">
+                          <pre id="webhookRequestPayload" class="json-highlight"></pre>
                         </div>
                       </div>
-                      <div class="col-md-3 text-center mb-3">
-                        <div class="card bg-dark">
-                          <div class="card-body p-2">
-                            <h3 class="text-light">${webhookStats.agentInvocations.github}</h3>
-                            <p class="mb-0">GITHUB AGENT</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="col-md-3 text-center mb-3">
-                        <div class="card bg-dark">
-                          <div class="card-body p-2">
-                            <h3 class="text-light">${webhookStats.agentInvocations.slack}</h3>
-                            <p class="mb-0">SLACK AGENT</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="col-md-3 text-center mb-3">
-                        <div class="card bg-dark">
-                          <div class="card-body p-2">
-                            <h3 class="text-light">${webhookStats.agentInvocations.salesforce}</h3>
-                            <p class="mb-0">SALESFORCE AGENT</p>
-                          </div>
+                    </div>
+                    <div class="accordion-item">
+                      <h2 class="accordion-header" id="resultDataHeader">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#resultDataCollapse" aria-expanded="false" aria-controls="resultDataCollapse">
+                          <i class="fas fa-reply me-2"></i> Result Payload
+                        </button>
+                      </h2>
+                      <div id="resultDataCollapse" class="accordion-collapse collapse" aria-labelledby="resultDataHeader" data-bs-parent="#webhookDataAccordion">
+                        <div class="accordion-body">
+                          <pre id="webhookResultPayload" class="json-highlight"></pre>
                         </div>
                       </div>
                     </div>
@@ -198,50 +337,562 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
                 </div>
               </div>
             </div>
-          </div>
-          <div class="col-md-12">
-            <div class="card">
-              <div class="card-header">
-                Recent Webhook Invocations
-              </div>
-              <div class="card-body p-0">
-                <table class="table table-dark table-striped mb-0">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Name</th>
-                      <th>Timestamp</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody id="recent-webhooks">
-                    ${webhookStats.recentWebhooks.map(webhook => `
-                      <tr>
-                        <td>${webhook.id}</td>
-                        <td>${webhook.name}</td>
-                        <td>${new Date(webhook.timestamp).toLocaleString()}</td>
-                        <td><span class="badge ${webhook.status === 'success' ? 'bg-success' : 'bg-danger'}">${webhook.status}</span></td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
           </div>
         </div>
-      `;
-      
-      // Add the stats directly to the agent terminal section
-      const dashboardEl = document.createElement('div');
-      dashboardEl.innerHTML = dashboardHtml;
-      agentTerminalSection.prepend(dashboardEl);
-      
-      // Make sure stats are shown
-      const statsContainer = document.getElementById('webhook-stats');
-      if (statsContainer) {
-        statsContainer.style.display = 'block';
-      }
+      </div>
+    `;
+    
+    // First try to use the dedicated dashboard section
+    const dashboardSection = document.getElementById('dashboard');
+    if (dashboardSection) {
+      console.log("Found dashboard section, inserting content");
+      dashboardSection.innerHTML = dashboardHtml;
+      setupWebhookTableRowListeners();
+      return;
     }
+    
+    // Fallback to inserting into main-content if dashboard section doesn't exist
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+      console.log("Found main-content element, inserting dashboard");
+      mainContent.insertAdjacentHTML('afterbegin', dashboardHtml);
+      setupWebhookTableRowListeners();
+      return;
+    }
+    
+    // Last resort - try to insert directly into agent-terminal section
+    const agentTerminalSection = document.getElementById('agent-terminal');
+    if (agentTerminalSection) {
+      console.log("Using fallback: Inserting into agent-terminal section");
+      agentTerminalSection.insertAdjacentHTML('afterbegin', dashboardHtml);
+      setupWebhookTableRowListeners();
+    } else {
+      console.error("Could not find any appropriate container for dashboard");
+    }
+  }
+  
+  // Update existing dashboard content with new data
+  function updateDashboardContent() {
+    // Update agent counts
+    document.getElementById('host-agent-count').textContent = webhookStats.agentInvocations.host;
+    document.getElementById('github-agent-count').textContent = webhookStats.agentInvocations.github;
+    document.getElementById('slack-agent-count').textContent = webhookStats.agentInvocations.slack;
+    document.getElementById('salesforce-agent-count').textContent = webhookStats.agentInvocations.salesforce;
+    
+    // Update webhook table
+    const recentWebhooksTable = document.getElementById('recent-webhooks-table');
+    if (recentWebhooksTable) {
+      recentWebhooksTable.innerHTML = generateWebhookTableRows(webhookStats.recentWebhooks);
+      
+      // Add event listeners to updated rows
+      setupWebhookTableRowListeners();
+    }
+  }
+  
+  // Generate HTML for webhook table rows
+  function generateWebhookTableRows(webhooks) {
+    if (!webhooks || webhooks.length === 0) {
+      return '<tr><td colspan="4" class="text-center">No webhook invocations yet</td></tr>';
+    }
+    
+    return webhooks.map(webhook => {
+      const dateObj = new Date(webhook.timestamp);
+      const formattedDate = `${dateObj.toLocaleDateString()}, ${dateObj.toLocaleTimeString()}`;
+      
+      let statusClass, statusText;
+      
+      // Handle processing status differently from success/failed
+      if (webhook.status === 'processing') {
+        statusClass = 'info';
+        statusText = 'PROCESSING';
+      } else {
+        statusClass = webhook.status === 'success' ? 'success' : 'danger';
+        statusText = webhook.status === 'success' ? 'SUCCESS' : 'FAILED';
+      }
+      
+      return `
+        <tr class="webhook-row" data-id="${webhook.id}">
+          <td>${webhook.id}</td>
+          <td>${webhook.name}</td>
+          <td>${formattedDate}</td>
+          <td><span class="badge bg-${statusClass}">${statusText}</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
+  
+  // Add click event listeners to webhook table rows
+  function setupWebhookTableRowListeners() {
+    document.querySelectorAll('.webhook-row').forEach(row => {
+      row.addEventListener('click', function() {
+        const webhookId = this.getAttribute('data-id');
+        showWebhookDetails(webhookId);
+      });
+    });
+  }
+  
+  // Show webhook details in modal
+  async function showWebhookDetails(webhookId) {
+    try {
+      // Fetch webhook details
+      const response = await fetch(`${STATS_API_URL}/webhook/${webhookId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch webhook details: ${response.status} ${response.statusText}`);
+      }
+      
+      const webhookData = await response.json();
+      
+      // Extract agent results for determining actual status
+      let agentResults = null;
+      let hasFailedAgents = false;
+      let failedAgents = [];
+      let agentMessages = {}; // To store messages sent to each agent
+      
+      // Try to extract agent results for more accurate status
+      try {
+        // First, try to get agent messages from the top-level tasks property
+        if (webhookData.details.result && webhookData.details.result.tasks) {
+          agentMessages = webhookData.details.result.tasks;
+          console.log("Found tasks in result:", agentMessages);
+        }
+        // Then check if we have agent messages in the agentMessages property
+        else if (webhookData.details.agentMessages) {
+          agentMessages = webhookData.details.agentMessages;
+          console.log("Found agentMessages:", agentMessages);
+        }
+
+        // First check direct results array
+        if (webhookData.details.result && webhookData.details.result.results) {
+          const results = webhookData.details.result.results;
+          failedAgents = results
+            .filter(result => result.status === 'failed')
+            .map(result => result.agent || 'Unknown agent');
+            
+          hasFailedAgents = failedAgents.length > 0;
+        }
+        
+        // Then check nested results in text payload
+        if (webhookData.details.result && 
+            webhookData.details.result.status && 
+            webhookData.details.result.status.message && 
+            webhookData.details.result.status.message.parts) {
+          
+          // Locate the text part that might contain the results
+          const textPart = webhookData.details.result.status.message.parts.find(part => part.type === 'text');
+          if (textPart && textPart.text) {
+            // Try to extract the JSON part
+            const resultMatch = textPart.text.match(/Results: (\{.*\})/s);
+            if (resultMatch && resultMatch[1]) {
+              agentResults = JSON.parse(resultMatch[1]);
+              
+              // Determine if any agents failed
+              failedAgents = Object.keys(agentResults).filter(agentName => {
+                const agentData = agentResults[agentName];
+                return agentData.status && agentData.status.state === 'failed';
+              });
+              
+              hasFailedAgents = failedAgents.length > 0;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error determining agent status:", err);
+      }
+      
+      // Update modal title with status badge - use official status but warn if there are failed agents
+      const status = webhookData.status === 'processing' 
+        ? 'processing' 
+        : (hasFailedAgents ? 'failed' : webhookData.status);
+        
+      let statusClass, statusText;
+      if (status === 'processing') {
+        statusClass = 'info';
+        statusText = 'PROCESSING';
+      } else {
+        statusClass = status === 'success' ? 'success' : 'danger';
+        statusText = status === 'success' ? 'SUCCESS' : 'FAILED';
+      }
+      
+      document.getElementById('webhookDetailsModalLabel').innerHTML = 
+        `Webhook Invocation: ${webhookData.name} <span class="badge bg-${statusClass} ms-2">${statusText}</span>`;
+      
+      // Generate agent details content
+      const agentDetailsContainer = document.getElementById('agentDetailsContainer');
+      const agentDetailsContent = document.getElementById('agentDetailsContent');
+      
+      // Clear previous agent details
+      agentDetailsContent.innerHTML = '';
+      
+      // Check if webhook is still processing
+      if (webhookData.status === 'processing') {
+        agentDetailsContainer.style.display = 'flex';
+        agentDetailsContent.innerHTML = `
+          <div class="alert alert-info mb-3">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            This webhook is still being processed. Results will appear when processing is complete.
+          </div>
+        `;
+        
+        // Auto-refresh the details after a few seconds
+        setTimeout(() => {
+          showWebhookDetails(webhookId);
+        }, 3000);
+      } 
+      // Check if we have agent results to display
+      else if (agentResults) {
+        agentDetailsContainer.style.display = 'flex';
+        
+        // Create a better formatted display for agent results
+        const agentNames = Object.keys(agentResults);
+        
+        // Add a summary if there are failures
+        let summaryHtml = '';
+        if (failedAgents.length > 0) {
+          summaryHtml = `
+            <div class="alert alert-danger mb-3">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              ${failedAgents.length} of ${agentNames.length} agents failed: ${failedAgents.join(', ')}
+            </div>
+          `;
+        }
+        
+        // Create accordion for agent details
+        const accordionHtml = `
+          ${summaryHtml}
+          <div class="accordion" id="agentAccordion">
+            ${agentNames.map((agentName, index) => {
+              const agentData = agentResults[agentName];
+              const agentType = agentName.toLowerCase();
+              const iconClass = getAgentIconClass(agentType);
+              
+              // Determine status class based on agent state
+              const isSuccess = agentData.status && agentData.status.state !== 'failed';
+              const statusClass = isSuccess ? 'success' : 'danger';
+              const statusText = isSuccess ? 'Success' : 'Failed';
+              
+              // Extract the agent's message text if available
+              let messageText = '';
+              if (agentData.status && agentData.status.message && agentData.status.message.parts) {
+                const textPart = agentData.status.message.parts.find(part => part.type === 'text');
+                if (textPart) {
+                  messageText = textPart.text;
+                }
+              }
+              
+              // Get the message sent to this agent (if available)
+              let sentTaskMessage = '';
+              if (agentMessages && agentMessages[agentType]) {
+                sentTaskMessage = `
+                  <div class="mt-3 mb-3 p-3 border border-info bg-dark">
+                    <h6 class="text-info"><i class="fas fa-paper-plane me-2"></i>Host Agent Message:</h6>
+                    <p class="mb-0 text-light">${agentMessages[agentType]}</p>
+                  </div>
+                `;
+              } else if (agentData.task && agentData.task.message && agentData.task.message.parts && agentData.task.message.parts[0]) {
+                sentTaskMessage = `
+                  <div class="mt-3 mb-3 p-3 border border-info bg-dark">
+                    <h6 class="text-info"><i class="fas fa-paper-plane me-2"></i>Host Agent Message:</h6>
+                    <p class="mb-0 text-light">${agentData.task.message.parts[0].text || 'No message content'}</p>
+                  </div>
+                `;
+              }
+              
+              // If no task message was found, add a placeholder for debugging
+              if (!sentTaskMessage) {
+                sentTaskMessage = `
+                  <div class="mt-3 mb-3 p-3 border border-warning bg-dark">
+                    <h6 class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Host Agent Message:</h6>
+                    <p class="mb-0 text-light">No message content found. Check server logs for details.</p>
+                  </div>
+                `;
+              }
+              
+              // Format artifacts if any
+              let artifactsHtml = '';
+              if (agentData.artifacts && agentData.artifacts.length > 0) {
+                artifactsHtml = `
+                  <div class="mt-3">
+                    <h6>Artifacts</h6>
+                    <div class="list-group">
+                      ${agentData.artifacts.map(artifact => {
+                        // Try to parse any JSON in artifact parts
+                        let artifactContent = '';
+                        if (artifact.parts && artifact.parts.length > 0) {
+                          try {
+                            const textPart = artifact.parts.find(part => part.type === 'text');
+                            if (textPart && textPart.text) {
+                              // Check if it's JSON and can be parsed
+                              if (textPart.text.trim().startsWith('{')) {
+                                const parsedJson = JSON.parse(textPart.text);
+                                artifactContent = `<pre class="json-highlight mt-2">${JSON.stringify(parsedJson, null, 2)}</pre>`;
+                              } else {
+                                artifactContent = `<pre class="mt-2">${textPart.text}</pre>`;
+                              }
+                            }
+                          } catch (e) {
+                            artifactContent = `<pre class="mt-2">${artifact.parts[0]?.text || 'No content'}</pre>`;
+                          }
+                        }
+                        
+                        return `
+                          <div class="list-group-item bg-dark">
+                            <div class="d-flex justify-content-between align-items-center">
+                              <h6 class="mb-0">${artifact.name || 'Unnamed Artifact'}</h6>
+                              <span class="badge bg-secondary">${artifact.lastChunk ? 'Complete' : 'Partial'}</span>
+                            </div>
+                            ${artifactContent}
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                `;
+              }
+              
+              return `
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="heading${index}">
+                    <button class="accordion-button ${statusClass === 'danger' ? 'bg-danger' : 'bg-success'}" type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#collapse${index}" aria-expanded="${index === 0 ? 'true' : 'false'}" aria-controls="collapse${index}">
+                      <i class="${iconClass} me-2"></i> 
+                      <span class="me-2">${agentName}</span>
+                      <span class="badge bg-${statusClass} ms-auto">${statusText}</span>
+                    </button>
+                  </h2>
+                  <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" aria-labelledby="heading${index}" data-bs-parent="#agentAccordion">
+                    <div class="accordion-body">
+                      ${sentTaskMessage}
+                      <div class="agent-message bg-${statusClass}">
+                        <p class="mb-0"><strong>Response:</strong> ${messageText}</p>
+                      </div>
+                      <div class="agent-details">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <p><strong>ID:</strong> ${agentData.id}</p>
+                            <p><strong>Status:</strong> ${agentData.status?.state || 'Unknown'}</p>
+                          </div>
+                          <div class="col-md-6">
+                            <p><strong>Timestamp:</strong> ${new Date(agentData.status?.timestamp).toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                      ${artifactsHtml}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        
+        agentDetailsContent.innerHTML = accordionHtml;
+      } else if (webhookData.details.result && webhookData.details.result.results) {
+        // Fallback to the original method if needed
+        agentDetailsContainer.style.display = 'flex';
+        
+        // Create a list of agent results from the results object
+        const resultsArray = [];
+        const agentTypes = Object.keys(webhookData.details.result.results);
+        
+        for (const agentType of agentTypes) {
+          const result = webhookData.details.result.results[agentType];
+          
+          // Add the agent type to the result for identification
+          result.agent = agentType;
+          
+          // Add to results array
+          resultsArray.push(result);
+          
+          // If the agent failed, add to failed agents list
+          if (result.status && result.status.state === 'failed') {
+            failedAgents.push(agentType);
+          }
+        }
+        
+        // Add a summary if there are failures
+        let summaryHtml = '';
+        if (failedAgents.length > 0) {
+          summaryHtml = `
+            <div class="alert alert-danger mb-3">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              ${failedAgents.length} of ${agentTypes.length} agents failed: ${failedAgents.join(', ')}
+            </div>
+          `;
+        }
+        
+        // Create accordion for agent details
+        const accordionHtml = `
+          ${summaryHtml}
+          <div class="accordion" id="agentAccordion">
+            ${agentTypes.map((agentType, index) => {
+              const agentData = webhookData.details.result.results[agentType];
+              const iconClass = getAgentIconClass(agentType);
+              
+              // Determine status class based on agent state
+              const isSuccess = agentData.status && agentData.status.state !== 'failed';
+              const statusClass = isSuccess ? 'success' : 'danger';
+              const statusText = isSuccess ? 'Success' : 'Failed';
+              
+              // Extract the agent's message text if available
+              let messageText = '';
+              if (agentData.status && agentData.status.message && agentData.status.message.parts) {
+                const textPart = agentData.status.message.parts.find(part => part.type === 'text');
+                if (textPart) {
+                  messageText = textPart.text;
+                }
+              }
+              
+              // Get the message sent to this agent (if available)
+              let sentTaskMessage = '';
+              if (agentMessages && agentMessages[agentType]) {
+                sentTaskMessage = `
+                  <div class="mt-3 mb-3 p-3 border border-info bg-dark">
+                    <h6 class="text-info"><i class="fas fa-paper-plane me-2"></i>Host Agent Message:</h6>
+                    <p class="mb-0 text-light">${agentMessages[agentType]}</p>
+                  </div>
+                `;
+              } else if (agentData.task && agentData.task.message && agentData.task.message.parts && agentData.task.message.parts[0]) {
+                sentTaskMessage = `
+                  <div class="mt-3 mb-3 p-3 border border-info bg-dark">
+                    <h6 class="text-info"><i class="fas fa-paper-plane me-2"></i>Host Agent Message:</h6>
+                    <p class="mb-0 text-light">${agentData.task.message.parts[0].text || 'No message content'}</p>
+                  </div>
+                `;
+              }
+              
+              // If no task message was found, add a placeholder for debugging
+              if (!sentTaskMessage) {
+                sentTaskMessage = `
+                  <div class="mt-3 mb-3 p-3 border border-warning bg-dark">
+                    <h6 class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Host Agent Message:</h6>
+                    <p class="mb-0 text-light">No message content found. Check server logs for details.</p>
+                  </div>
+                `;
+              }
+              
+              // Format artifacts if any
+              let artifactsHtml = '';
+              if (agentData.artifacts && agentData.artifacts.length > 0) {
+                artifactsHtml = `
+                  <div class="mt-3">
+                    <h6>Artifacts</h6>
+                    <div class="list-group">
+                      ${agentData.artifacts.map(artifact => {
+                        // Try to parse any JSON in artifact parts
+                        let artifactContent = '';
+                        if (artifact.parts && artifact.parts.length > 0) {
+                          try {
+                            const textPart = artifact.parts.find(part => part.type === 'text');
+                            if (textPart && textPart.text) {
+                              // Check if it's JSON and can be parsed
+                              if (textPart.text.trim().startsWith('{')) {
+                                const parsedJson = JSON.parse(textPart.text);
+                                artifactContent = `<pre class="json-highlight mt-2">${JSON.stringify(parsedJson, null, 2)}</pre>`;
+                              } else {
+                                artifactContent = `<pre class="mt-2">${textPart.text}</pre>`;
+                              }
+                            }
+                          } catch (e) {
+                            artifactContent = `<pre class="mt-2">${artifact.parts[0]?.text || 'No content'}</pre>`;
+                          }
+                        }
+                        
+                        return `
+                          <div class="list-group-item bg-dark">
+                            <div class="d-flex justify-content-between align-items-center">
+                              <h6 class="mb-0">${artifact.name || 'Unnamed Artifact'}</h6>
+                              <span class="badge bg-secondary">${artifact.lastChunk ? 'Complete' : 'Partial'}</span>
+                            </div>
+                            ${artifactContent}
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                `;
+              }
+              
+              return `
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="heading${index}">
+                    <button class="accordion-button ${statusClass === 'danger' ? 'bg-danger' : 'bg-success'}" type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#collapse${index}" aria-expanded="${index === 0 ? 'true' : 'false'}" aria-controls="collapse${index}">
+                      <i class="${iconClass} me-2"></i> 
+                      <span class="me-2">${agentType}</span>
+                      <span class="badge bg-${statusClass} ms-auto">${statusText}</span>
+                    </button>
+                  </h2>
+                  <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" aria-labelledby="heading${index}" data-bs-parent="#agentAccordion">
+                    <div class="accordion-body">
+                      ${sentTaskMessage}
+                      <div class="agent-message bg-${statusClass}">
+                        <p class="mb-0"><strong>Response:</strong> ${messageText}</p>
+                      </div>
+                      <div class="agent-details">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <p><strong>ID:</strong> ${agentData.id}</p>
+                            <p><strong>Status:</strong> ${agentData.status?.state || 'Unknown'}</p>
+                          </div>
+                          <div class="col-md-6">
+                            <p><strong>Timestamp:</strong> ${new Date(agentData.status?.timestamp).toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                      ${artifactsHtml}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        
+        agentDetailsContent.innerHTML = accordionHtml;
+      } else {
+        agentDetailsContainer.style.display = 'none';
+      }
+      
+      // Update the JSON data in the accordions at the bottom
+      const requestPayload = document.getElementById('webhookRequestPayload');
+      const resultPayload = document.getElementById('webhookResultPayload');
+      
+      if (requestPayload && resultPayload) {
+        // Format and display request payload
+        requestPayload.textContent = JSON.stringify(webhookData.details.webhookData, null, 2);
+        
+        // Format and display result payload
+        resultPayload.textContent = JSON.stringify(webhookData.details.result, null, 2);
+        
+        // Apply syntax highlighting
+        formatJson();
+      }
+      
+      // Show the modal
+      const modalElement = document.getElementById('webhookDetailsModal');
+      const modal = new bootstrap.Modal(modalElement);
+      modal.show();
+    } catch (error) {
+      console.error('Error showing webhook details:', error);
+      alert(`Error showing webhook details: ${error.message}`);
+    }
+  }
+  
+  // Get icon class for agent type
+  function getAgentIconClass(agentType) {
+    if (agentType.includes('github')) {
+      return 'fab fa-github';
+    } else if (agentType.includes('slack')) {
+      return 'fab fa-slack';
+    } else if (agentType.includes('salesforce')) {
+      return 'fas fa-cloud';
+    } else if (agentType.includes('host')) {
+      return 'fas fa-server';
+    }
+    return 'fas fa-robot';
   }
   
   // Set up event listeners
@@ -275,6 +926,20 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       // No action needed - status indicator is display-only
     });
     
+    // Back to Dashboard button
+    const backToDashboardBtn = document.getElementById('backToDashboard');
+    if (backToDashboardBtn) {
+      backToDashboardBtn.addEventListener('click', function() {
+        // Reset any selected agent
+        document.querySelectorAll('.agent-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        // Navigate to dashboard
+        window.location.hash = '#dashboard';
+      });
+    }
+    
     // Start periodic server status check
     setInterval(updateServerStatus, 30000);
   }
@@ -291,28 +956,81 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
   
   // Handle navigation between sections based on hash
   function handleNavigation(hash) {
-    const targetId = hash.substring(1) || 'agent-terminal';
+    const targetId = hash.substring(1) || 'dashboard';
+    
+    // Create dashboard if it doesn't exist and we're showing dashboard
+    if ((targetId === 'dashboard' || targetId === 'agent-terminal') && !document.getElementById('webhook-stats')) {
+      console.log("Creating dashboard because it's missing");
+      createDashboardUI();
+    }
+    
+    // Get the stats container now that we ensured it exists
+    const statsContainer = document.getElementById('webhook-stats');
     
     // Hide all sections
     if (agentTerminalSection) agentTerminalSection.style.display = 'none';
     if (webhooksSection) webhooksSection.style.display = 'none';
     if (testSection) testSection.style.display = 'none';
+    const dashboardSection = document.getElementById('dashboard');
+    if (dashboardSection) dashboardSection.style.display = 'none';
+    
+    // Also explicitly hide stats container regardless of which tab we're switching to
+    if (statsContainer) {
+      statsContainer.style.display = 'none';
+    }
     
     // Show the target section
     const targetSection = document.getElementById(targetId);
     if (targetSection) {
       targetSection.style.display = 'block';
       
+      // Special handling for dashboard section
+      if (targetId === 'dashboard') {
+        // Always show agent-terminal section when dashboard is active
+        if (agentTerminalSection) {
+          agentTerminalSection.style.display = 'block';
+        }
+        
+        // Show the stats
+        if (statsContainer) {
+          statsContainer.style.display = 'block';
+        }
+        
+        // Hide the terminal container
+        const terminalContainer = document.querySelector('.terminal-container');
+        if (terminalContainer) {
+          terminalContainer.style.display = 'none';
+        }
+        
+        // Hide the agent header
+        const agentHeader = document.querySelector('#agent-terminal .d-flex.justify-content-between.align-items-center');
+        if (agentHeader) {
+          agentHeader.style.display = 'none';
+        }
+      }
       // If we're switching to the agent terminal section, check if any agent is selected
-      if (targetId === 'agent-terminal') {
+      else if (targetId === 'agent-terminal') {
         // Check if any agent is active
         const activeAgent = document.querySelector('.agent-item.active');
         
         if (!activeAgent) {
           // If no agent is active, show the dashboard stats
-          const statsContainer = document.getElementById('webhook-stats');
           if (statsContainer) {
             statsContainer.style.display = 'block';
+          } else {
+            // This should never happen now, but just in case
+            console.error("Stats container still not found after creating dashboard");
+            
+            // Force immediate recreation as a last resort
+            createDashboardUI();
+            
+            // Try to show it after a short delay to ensure DOM is updated
+            setTimeout(() => {
+              const newStatsContainer = document.getElementById('webhook-stats');
+              if (newStatsContainer) {
+                newStatsContainer.style.display = 'block';
+              }
+            }, 50);
           }
           
           // Hide the terminal container if no agent is selected
@@ -320,9 +1038,14 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
           if (terminalContainer) {
             terminalContainer.style.display = 'none';
           }
+          
+          // Hide the agent header
+          const agentHeader = agentTerminalSection.querySelector('.d-flex.justify-content-between.align-items-center');
+          if (agentHeader) {
+            agentHeader.style.display = 'none';
+          }
         } else {
           // If an agent is active, make sure stats are hidden and terminal is visible
-          const statsContainer = document.getElementById('webhook-stats');
           if (statsContainer) {
             statsContainer.style.display = 'none';
           }
@@ -333,6 +1056,12 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
             terminalContainer.style.display = 'block';
           }
           
+          // Show the agent header
+          const agentHeader = agentTerminalSection.querySelector('.d-flex.justify-content-between.align-items-center');
+          if (agentHeader) {
+            agentHeader.style.display = 'flex';
+          }
+          
           // Update terminal for the active agent
           const agentType = activeAgent.getAttribute('data-agent');
           updateAgentTerminal(agentType);
@@ -340,14 +1069,20 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       }
       
       // Update active nav link
-      navLinks.forEach(link => {
-        const linkTargetId = link.getAttribute('href').substring(1);
-        if (linkTargetId === targetId) {
-          link.classList.add('active');
-        } else {
-          link.classList.remove('active');
-        }
-      });
+      if (navLinks) {
+        navLinks.forEach(link => {
+          const href = link.getAttribute('href');
+          // Skip if href is null
+          if (!href) return;
+          
+          const linkTargetId = href.substring(1);
+          if (linkTargetId === targetId) {
+            link.classList.add('active');
+          } else {
+            link.classList.remove('active');
+          }
+        });
+      }
     }
   }
   
@@ -360,27 +1095,52 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
         // Get the target from href attribute
         const target = this.getAttribute('href');
         
-        // Special handling for Dashboard link
-        if (target === '#agent-terminal') {
+        // Special handling for Dashboard link to reset agents and force stats to show
+        if (target === '#dashboard' || (this.textContent && this.textContent.trim() === 'Dashboard')) {
+          // Ensure we're using the correct hash for the dashboard
+          const dashboardTarget = '#dashboard';
+          
           // Reset any selected agent
           document.querySelectorAll('.agent-item').forEach(item => {
             item.classList.remove('active');
           });
           
-          // Show stats, hide terminal
+          // Create dashboard if it doesn't exist
+          if (!document.getElementById('webhook-stats')) {
+            console.log("Creating dashboard for Dashboard link click");
+            createDashboardUI();
+          }
+          
+          // Force stats to show when going to dashboard
           const statsContainer = document.getElementById('webhook-stats');
           if (statsContainer) {
+            // Show agent-terminal section first
+            if (agentTerminalSection) {
+              agentTerminalSection.style.display = 'block';
+            }
+            
+            // Then show stats
             statsContainer.style.display = 'block';
           }
           
+          // Hide the terminal container
           const terminalContainer = document.querySelector('.terminal-container');
           if (terminalContainer) {
             terminalContainer.style.display = 'none';
           }
+          
+          // Hide the agent header
+          const agentHeader = document.querySelector('#agent-terminal .d-flex.justify-content-between.align-items-center');
+          if (agentHeader) {
+            agentHeader.style.display = 'none';
+          }
+          
+          // Update window location hash
+          window.location.hash = dashboardTarget;
+        } else {
+          // For other tabs, just update the hash
+          window.location.hash = target;
         }
-        
-        // Update window location hash (this will trigger hashchange event)
-        window.location.hash = target;
       });
     });
   }
@@ -462,8 +1222,17 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
     });
   }
   
+  // Flag to prevent duplicate submissions
+  let isWebhookSubmissionInProgress = false;
+  
   // Send webhook request
   async function sendWebhook() {
+    // Prevent duplicate submissions
+    if (isWebhookSubmissionInProgress) {
+      console.log('Webhook submission already in progress, ignoring duplicate request');
+      return;
+    }
+    
     const webhookId = webhookSelect.value;
     if (!webhookId) {
       alert('Please select a webhook configuration');
@@ -480,6 +1249,9 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
         return;
       }
       
+      // Set flag to prevent duplicate submissions
+      isWebhookSubmissionInProgress = true;
+      
       // Update UI to show loading state
       btnSendWebhook.disabled = true;
       btnSendWebhook.innerHTML = `
@@ -492,13 +1264,23 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       // Add terminal messages
       addTerminalLine(`Sending webhook request to ${webhookId}...`);
       
+      // Generate a client-side unique ID for this request to track it
+      const clientRequestId = `${webhookId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`Generated client request ID: ${clientRequestId}`);
+      
+      // Add the unique request ID to the payload
+      const payloadWithId = {
+        ...payload,
+        _clientRequestId: clientRequestId
+      };
+      
       // Send the request
       const response = await fetch(`${TEST_WEBHOOK_API_URL}/${webhookId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payloadWithId)
       });
       
       // Parse response
@@ -530,10 +1312,6 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       // Update statistics with correct status
       updateWebhookStats(webhookId, isProcessingSuccessful ? 'success' : 'failed');
       
-      // Reset button state
-      btnSendWebhook.disabled = false;
-      btnSendWebhook.textContent = 'Send Webhook';
-      
     } catch (error) {
       console.error('Error sending webhook:', error);
       
@@ -549,61 +1327,22 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       
       // Update statistics with failed status
       updateWebhookStats(webhookId, 'failed');
-      
-      // Reset button state
+    } finally {
+      // Reset button state and submission flag
       btnSendWebhook.disabled = false;
       btnSendWebhook.textContent = 'Send Webhook';
+      
+      // Add a small delay before allowing new submissions to prevent rapid clicking
+      setTimeout(() => {
+        isWebhookSubmissionInProgress = false;
+      }, 2000);
     }
   }
   
   // Update webhook statistics after processing
   function updateWebhookStats(webhookId, status) {
-    // Find webhook name
-    const webhook = currentWebhooks.find(w => w.id === webhookId);
-    const webhookName = webhook ? webhook.name : webhookId;
-    
-    // Update total processed count
-    webhookStats.totalProcessed++;
-    
-    // Update agent invocations (for demo purposes, increment all for meeting transcript)
-    if (webhookId === 'meeting-transcript') {
-      webhookStats.agentInvocations.host++;
-      webhookStats.agentInvocations.github++;
-      webhookStats.agentInvocations.slack++;
-      webhookStats.agentInvocations.salesforce++;
-    } else {
-      // For other webhooks, just increment host
-      webhookStats.agentInvocations.host++;
-    }
-    
-    // Add to recent webhooks
-    webhookStats.recentWebhooks.unshift({
-      id: webhookId,
-      name: webhookName,
-      timestamp: new Date().toISOString(),
-      status: status
-    });
-    
-    // Keep only the 10 most recent
-    if (webhookStats.recentWebhooks.length > 10) {
-      webhookStats.recentWebhooks = webhookStats.recentWebhooks.slice(0, 10);
-    }
-    
-    // Update UI
-    refreshDashboard();
-  }
-  
-  // Refresh dashboard UI with updated statistics
-  function refreshDashboard() {
-    // Update the statistics numbers
-    const statsContainer = document.getElementById('webhook-stats');
-    if (statsContainer) {
-      // Remove existing stats
-      statsContainer.remove();
-      
-      // Rebuild dashboard
-      updateDashboard();
-    }
+    // No need to update stats manually anymore, we fetch them from the server
+    fetchWebhookStats();
   }
   
   // Update agent terminal based on selected agent
@@ -632,6 +1371,9 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
     
     // Set auto-scroll flag to true initially
     terminalContent.setAttribute('data-auto-scroll', 'true');
+    
+    // Initialize content hash to empty string for new agent
+    terminalContent.setAttribute('data-content-hash', '');
     
     // Setup scroll event listener
     setupTerminalScrollListener();
@@ -724,12 +1466,14 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
         return;
       }
       
-      // Get current log lines for comparison
-      const currentLines = Array.from(terminalContent.querySelectorAll('.terminal-line')).map(line => line.textContent);
-      const newEntries = data.entries.map(entry => entry.message);
+      // Create a hash of the log content for efficient comparison
+      const newEntriesHash = hashLogEntries(data.entries.map(entry => entry.message));
+      const currentHash = terminalContent.getAttribute('data-content-hash') || '';
       
-      // Only update if there are new log entries
-      if (JSON.stringify(currentLines) !== JSON.stringify(newEntries)) {
+      // Only update if content hash has changed
+      if (currentHash !== newEntriesHash) {
+        console.log('Log content changed, updating terminal');
+        
         // Remember scroll position and check if at bottom
         const shouldAutoScroll = terminalContent.getAttribute('data-auto-scroll') === 'true';
         
@@ -745,13 +1489,18 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
           addTerminalLine(`No logs available for ${agentType} agent`, false);
         }
         
+        // Store the current content hash
+        terminalContent.setAttribute('data-content-hash', newEntriesHash);
+        
         // Always scroll to bottom on initial load or if auto-scroll is enabled
-        if (shouldAutoScroll || currentLines.length === 0) {
+        if (shouldAutoScroll || currentHash === '') {
           // Use setTimeout to ensure DOM has updated before scrolling
           setTimeout(() => {
             scrollToBottom();
           }, 50);
         }
+      } else {
+        console.log('Log content unchanged, skipping update');
       }
     } catch (error) {
       console.error(`Error fetching ${agentType} logs:`, error);
@@ -770,6 +1519,18 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       // Scroll to bottom even on error
       scrollToBottom();
     }
+  }
+  
+  // Function to create a simple hash of log entries for comparison
+  function hashLogEntries(entries) {
+    if (!entries || entries.length === 0) return '';
+    
+    // Use the length and the first/last few characters of first and last entries
+    // as a simple way to detect changes without comparing the entire content
+    const firstEntry = entries[0] || '';
+    const lastEntry = entries[entries.length - 1] || '';
+    
+    return `${entries.length}:${firstEntry.slice(0, 10)}:${lastEntry.slice(-10)}`;
   }
   
   // Poll for log updates
@@ -879,6 +1640,11 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
   // Initialize terminal with default content
   function initializeTerminal() {
     terminalContent.innerHTML = '';
+    
+    // Initialize hash attributes
+    terminalContent.setAttribute('data-content-hash', '');
+    terminalContent.setAttribute('data-auto-scroll', 'true');
+    
     addTerminalLine('Initializing agent logs...', false);
     addTerminalLine('Waiting for agent selection...', false);
     
@@ -1137,30 +1903,33 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
         // Get the agent type
         const agentType = this.getAttribute('data-agent');
         
-        // Make sure we're on the dashboard view first (this will hide all other sections)
+        // Reset any current navigation
         window.location.hash = '#agent-terminal';
         
-        // If we're in the dashboard view, we need to show the terminal and update it
+        // Manually handle the visibility instead of waiting for hashchange
         if (agentTerminalSection) {
-          // First, hide the stats for all agents (including host)
+          // Show the terminal section
+          agentTerminalSection.style.display = 'block';
+          
+          // Hide the dashboard stats
           const statsContainer = document.getElementById('webhook-stats');
           if (statsContainer) {
             statsContainer.style.display = 'none';
           }
           
-          // Make sure the terminal is visible
-          const terminalContainer = agentTerminalSection.querySelector('.terminal-container');
-          if (terminalContainer) {
-            terminalContainer.style.display = 'block';
-          }
-          
-          // Show the agent header
+          // Show agent header
           const agentHeader = agentTerminalSection.querySelector('.d-flex.justify-content-between.align-items-center');
           if (agentHeader) {
             agentHeader.style.display = 'flex';
           }
           
-          // Update the terminal with the selected agent's information
+          // Show the terminal container
+          const terminalContainer = agentTerminalSection.querySelector('.terminal-container');
+          if (terminalContainer) {
+            terminalContainer.style.display = 'block';
+          }
+          
+          // Update the terminal content
           updateAgentTerminal(agentType);
         }
       });

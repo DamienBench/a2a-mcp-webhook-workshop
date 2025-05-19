@@ -51,8 +51,9 @@ export const githubCreateIssue = ai.defineTool(
     // Extract parameters
     const { title, body, repository, ...restParams } = inputParams;
     
-    // Default repository if not provided
-    const repo = repository || "owner/repo";
+    // Use environment variable for repository if available, otherwise fall back to provided or default
+    const defaultRepo = process.env.GITHUB_REPOSITORY || "DamienBench/a2a-mcp-webhook-workshop";
+    const repo = repository && repository !== "owner/repo" ? repository : defaultRepo;
     
     // MCP requires 'instructions' field
     const mcpArgs = {

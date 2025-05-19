@@ -59,7 +59,8 @@ async function* githubAgent({
     );
     
     // Initialize tool usage variables
-    let repository = "owner/repo"; // Default
+    const defaultRepo = process.env.GITHUB_REPOSITORY || "DamienBench/a2a-mcp-webhook-workshop";
+    let repository = defaultRepo; // Use actual repo instead of owner/repo
     let title = "";
     let body = "";
     let issueNumber = 0;
@@ -80,7 +81,10 @@ async function* githubAgent({
               };
               title = input.title || "New Issue";
               body = input.body || "";
-              repository = input.repository || repository;
+              // Only use specified repository if it's not the placeholder
+              if (input.repository && input.repository !== "owner/repo") {
+                repository = input.repository;
+              }
               console.log("[GitHubAgent] Extracted title:", title, "repository:", repository);
             }
           }
@@ -97,7 +101,10 @@ async function* githubAgent({
                 htmlUrl?: string;
               };
               success = output.success === true;
-              repository = output.repository || repository;
+              // Only use response repository if it's not the placeholder
+              if (output.repository && output.repository !== "owner/repo") {
+                repository = output.repository;
+              }
               issueNumber = output.issueNumber || 0;
               htmlUrl = output.htmlUrl || "";
               console.log("[GitHubAgent] Issue creation success:", success, "URL:", htmlUrl);

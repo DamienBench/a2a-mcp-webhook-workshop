@@ -237,10 +237,36 @@ npm run test:host
 - Zapier: https://zapier.com
 - Gemini API: https://aistudio.google.com/app/apikey
 
-## Agent Documentation
+## System Architecture
 
-Each agent has its own detailed documentation:
+### Decoupled Agent Design
+
+This system implements a fully decoupled architecture where:
+
+1. **Zero Knowledge Design**: Each agent (host and sub-agents) has no direct knowledge about other agents in their code or prompts
+2. **Protocol-based Communication**: All interaction happens exclusively through the A2A protocol
+3. **Dynamic Discovery**: The Host Agent discovers available agents at runtime
+4. **Task Delegation**: Tasks are delegated based on capability matching, not hardcoded routing
+
+This architectural approach provides:
+- **Flexibility**: New agents can be added without modifying existing ones
+- **Scalability**: The system can grow to include more specialized agents
+- **Maintainability**: Each agent can be developed and updated independently
+- **Resilience**: The system can function even if some agents are unavailable
+
+### Debugging with Webhook Handler
+
+The system includes a webhook handler server with a web UI for debugging agent interactions:
+- Real-time monitoring of agent communication
+- Inspection of messages sent between agents
+- Testing webhook configurations
+- Viewing agent logs
+
+## Component Documentation
+
+Each component has its own detailed documentation:
 - [Host Agent](src/agents/host/README.md)
 - [Slack Agent](src/agents/slack/README.md)
 - [GitHub Agent](src/agents/github/README.md)
 - [Salesforce Agent](src/agents/salesforce/README.md)
+- [Webhook Handler & Web UI](src/webhooks/README.md)

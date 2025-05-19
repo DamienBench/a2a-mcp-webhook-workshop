@@ -51,143 +51,91 @@ async function* salesforceAgent({
     const salesforceTools = getSalesforceTools();
     
     // Use the prompt file to run the Salesforce agent with MCP tools
-    const response = await salesforceAgentPrompt(
-      { now: new Date().toISOString() },
-      {
-        messages: [
-          {
-            role: "user",
-            content: [{ text: userText }]
-          }
-        ],
-        tools: salesforceTools
-      }
-    );
+    // Add retry logic with exponential backoff for rate limit errors
+    let response;
+    let retries = 0;
+    const maxRetries = 5;
+    const baseDelay = 1000; // 1 second initial delay
     
-    // Initialize tool usage variables
-    let operation = 'unknown';
-    let objectType = 'Lead'; // Default object type
-    let recordId = `SF-${Date.now()}`; // Default ID
-    let success = false;
-    let fields: Record<string, any> = {};
-    
-    // Parse response to extract tool usage and results
-    if (response.request?.messages) {
-      for (const msg of response.request.messages) {
-        // Extract tool request details (object, fields)
-        if (msg.role === 'model' && msg.content && Array.isArray(msg.content)) {
-          for (const item of msg.content) {
-            if (item.toolRequest) {
-              // Determine operation based on the tool name
-              if (item.toolRequest.name === 'salesforce_create_record') {
-                operation = 'create';
-              } else if (item.toolRequest.name === 'salesforce_find_record') {
-                operation = 'find';
-              } else if (item.toolRequest.name === 'salesforce_update_record') {
-                operation = 'update';
-              }
-              
-              if (item.toolRequest.input) {
-                const input = item.toolRequest.input as Record<string, any>;
-                objectType = input.object || 'Lead';
-                
-                // Save input fields for later use
-                if (input.id) recordId = input.id;
-                
-                // Extract all other fields
-                fields = {...input};
-                delete fields.object; // Remove object from fields
-                
-                console.log(`[SalesforceAgent] ${operation} operation on ${objectType}:`, fields);
-              }
-            }
-          }
+    while (retries <= maxRetries) {
+      try {
+        // If we're retrying, notify the user
+        if (retries > 0) {
+          yield {
+            state: "working",
+            message: {
+              role: "agent",
+              parts: [{ type: "text", text: `Retrying due to API rate limit (attempt ${retries}/${maxRetries})...` }],
+            },
+          };
+          console.log(`[SalesforceAgent] Retry attempt ${retries}/${maxRetries}`);
         }
         
-        // Extract tool response details (success, ID, fields)
-        if (msg.role === 'tool' && msg.content && Array.isArray(msg.content)) {
-          for (const item of msg.content) {
-            if (item.toolResponse && item.toolResponse.output) {
-              const output = item.toolResponse.output as { 
-                success: boolean; 
-                object: string;
-                id?: string;
-                fields?: Record<string, any>;
-                updatedFields?: Record<string, any>;
-              };
-              
-              success = output.success === true;
-              objectType = output.object || objectType;
-              
-              if (output.id) {
-                recordId = output.id;
+        response = await salesforceAgentPrompt(
+          { now: new Date().toISOString() },
+          {
+            messages: [
+              {
+                role: "user",
+                content: [{ text: userText }]
               }
-              
-              // Update fields based on the operation
-              if (operation === 'create' || operation === 'find') {
-                if (output.fields) {
-                  fields = output.fields;
-                }
-              } else if (operation === 'update') {
-                if (output.updatedFields) {
-                  fields = output.updatedFields;
-                }
-              }
-              
-              console.log(`[SalesforceAgent] ${operation} success:`, success, "ID:", recordId);
-            }
+            ],
+            tools: salesforceTools
           }
+        );
+        
+        // Add debug output to see the response from the LLM
+        console.log("[SalesforceAgent] LLM response structure:", JSON.stringify(response, null, 2).substring(0, 500) + '...');
+        
+        // If we get here, the request succeeded, so break out of the retry loop
+        break;
+      } catch (error: any) {
+        // Check if it's a rate limit error (429)
+        const isRateLimit = error.message && (
+          error.message.includes("429 Too Many Requests") || 
+          error.message.includes("You exceeded your current quota")
+        );
+        
+        if (isRateLimit && retries < maxRetries) {
+          // Calculate exponential backoff with jitter
+          const delay = baseDelay * Math.pow(2, retries) + Math.random() * 1000;
+          console.log(`[SalesforceAgent] Rate limit exceeded. Retrying in ${delay}ms...`);
+          
+          // Notify user about the delay
+          yield {
+            state: "working",
+            message: {
+              role: "agent",
+              parts: [{ type: "text", text: `Google API rate limit reached. Waiting ${Math.round(delay/1000)} seconds before retrying...` }],
+            },
+          };
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, delay));
+          retries++;
+        } else {
+          // Either not a rate limit error or we've exceeded max retries
+          throw error;
         }
       }
     }
     
-    // Create a JSON file with the Salesforce record details
-    const filename = `salesforce_${operation}_${objectType.toLowerCase()}.json`;
-    const salesforceResponse = {
-      operation,
-      objectType,
-      fields,
-      id: recordId,
-      timestamp: new Date().toISOString(),
-      success
-    };
-    const fileContent = JSON.stringify(salesforceResponse, null, 2);
+    // No file output or artifacts
     
-    console.log("[SalesforceAgent] Creating artifact file:", filename);
-    
-    // Yield the JSON file as an artifact
-    yield {
-      index: 0,
-      name: filename,
-      parts: [{ type: "text", text: fileContent }],
-      lastChunk: true,
-    };
-    
-    // Prepare response message based on operation
+    // Get the LLM's response text
     let responseMessage = '';
-    
-    switch (operation) {
-      case 'create':
-        responseMessage = `I've created a new ${objectType} record with ID ${recordId}.`;
-        break;
-      case 'find':
-        responseMessage = `I've found the ${objectType} record with ID ${recordId}.`;
-        break;
-      case 'update':
-        responseMessage = `I've updated the ${objectType} record with ID ${recordId}.`;
-        break;
-      default:
-        responseMessage = `I've processed your Salesforce request for a ${objectType} record.`;
+    if (response.message?.content && Array.isArray(response.message.content)) {
+      for (const content of response.message.content) {
+        if (content.text) {
+          responseMessage = content.text;
+          break;
+        }
+      }
     }
     
-    // If operation failed, update the message
-    if (!success) {
-      responseMessage = `I was unable to ${operation} the ${objectType} record. Please check the logs for more details.`;
-    }
-    
-    // Finally, send a "completed" status update
+    // Send a "completed" status update with the LLM's response
     yield {
-      state: success ? "completed" : "failed",
+      state: "completed",
       message: {
         role: "agent",
         parts: [{ type: "text", text: responseMessage }],
@@ -254,7 +202,7 @@ async function initServer() {
     {
       card: {
         name: "Salesforce Agent",
-        description: "An agent that can create, find, and update Salesforce records",
+        description: "An agent that can create, find, and update Account, Contact, and Opportunity Salesforce records",
         url: `http://localhost:${port}`,
         provider: {
           organization: "A2A Samples",
@@ -267,42 +215,36 @@ async function initServer() {
         },
         authentication: null,
         defaultInputModes: ["text"],
-        defaultOutputModes: ["text", "file"],
+        defaultOutputModes: ["text"],
         skills: [
           {
             id: "salesforce_create",
             name: "Create Salesforce Records",
             description:
-              "Creates new records in Salesforce based on specified fields.",
+              "Creates new contact in Salesforce based on specified fields.",
             tags: ["salesforce", "crm", "create"],
             examples: [
-              "Create a new lead with name: John Doe, company: Acme Corp, email: john@example.com",
               "Create a contact with name: Jane Smith, phone: 555-123-4567",
-              "Create an opportunity for Acme Corp with name: New Deal",
             ],
           },
           {
             id: "salesforce_find",
             name: "Find Salesforce Records",
             description:
-              "Finds existing records in Salesforce based on search criteria.",
+              "Finds existing contact in Salesforce based on search criteria.",
             tags: ["salesforce", "crm", "find", "search"],
             examples: [
-              "Find lead with email: john@example.com",
-              "Get contact Jane Smith",
-              "Find opportunities for Acme Corp",
+              "Get contact Jane Smith"
             ],
           },
           {
             id: "salesforce_update",
-            name: "Update Salesforce Records",
+            name: "Update Salesforce Contacts",
             description:
-              "Updates existing records in Salesforce with new field values.",
+              "Updates existing contact record in Salesforce with new field values.",
             tags: ["salesforce", "crm", "update"],
             examples: [
-              "Update lead John Doe with new phone: 555-987-6543",
               "Update contact Jane Smith, set company: New Corp",
-              "Update the Acme Corp opportunity to Closed Won",
             ],
           },
         ],

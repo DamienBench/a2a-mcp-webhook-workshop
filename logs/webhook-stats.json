@@ -1,0 +1,191 @@
+{
+  "totalProcessed": 6,
+  "agentInvocations": {
+    "host": 6,
+    "github": 0,
+    "slack": 0,
+    "salesforce": 0
+  },
+  "recentWebhooks": [
+    {
+      "id": "meeting-transcript-1747626714824",
+      "name": "Meeting Transcript Processor",
+      "timestamp": "2025-05-19T03:52:32.117Z",
+      "status": "success",
+      "details": {
+        "webhookData": {
+          "transcript": "Meeting Transcript: Sales Discovery Call with Acme Corp - 5/18/2025\n\nParticipants:\n- Sarah Johnson (Account Executive, Our Company)\n- John Smith (CTO, Acme Corp)\n- Emma Davis (Head of Engineering, Acme Corp)\n\nSarah: Thank you for joining the call today. We're excited to discuss how our AI platform could help with your automation needs.\n\nJohn: Thanks for setting this up. We've been looking for a solution to automate our development workflows.\n\nEmma: Yes, particularly around code reviews and bug triage. Our team is spending too much time on these tasks.\n\nSarah: I understand. Our platform has specific features for development workflows. Let me show you how it works.\n\nJohn: That looks promising. One question - we found a bug in our trial where the AI sometimes misclassifies the severity of bugs.\n\nSarah: I'll make a note of that and have our engineers look into it. I'll create a bug report for this issue.\n\nEmma: Also, we'd like to integrate this with our Slack channels for team notifications. Is that possible?\n\nSarah: Absolutely! We have robust Slack integration capabilities. I'll share more details about that.\n\nJohn: Great. We're also using Salesforce for tracking our customer interactions. Can your system update Salesforce with actions taken?\n\nSarah: Yes, we offer Salesforce integration as well. I'll send you documentation on that.\n\nEmma: This sounds like it could work for us. What would the next steps be?\n\nSarah: I'll send a proposal with pricing and implementation details by tomorrow. Should I include anyone else?\n\nJohn: Please add our VP of Engineering to the proposal. I'll share their contact details after the call.\n\nSarah: Perfect! Thank you for your time today. I look forward to working with Acme Corp.",
+          "_clientRequestId": "meeting-transcript-1747626714814-v7edjljk8"
+        },
+        "result": {
+          "id": "meeting-transcript-1747626714824",
+          "status": {
+            "state": "completed",
+            "timestamp": "2025-05-19T03:52:32.108Z",
+            "message": {
+              "role": "agent",
+              "parts": [
+                {
+                  "type": "text",
+                  "text": "Successfully processed webhook: meeting-transcript\nResults: {\n  \"slack\": {\n    \"id\": \"5c5c8e17-7a0b-4ffe-a0ed-4b746939ae52\",\n    \"status\": {\n      \"state\": \"completed\",\n      \"timestamp\": \"2025-05-19T03:52:07.392Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I've sent your message to #test-slack-damien: \\\"Integration with Slack channels is possible for team notifications.\\\"\\n\\nView it here: https://bench-computing.slack.com/archives/C08NDF2TVM1/p1747626725479609\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Send a message to #test-slack-damien saying: Integration with Slack channels is possible for team notifications.\"\n          }\n        ]\n      }\n    }\n  },\n  \"github\": {\n    \"id\": \"4578dda1-e933-4dd9-9269-4eb17b03b736\",\n    \"status\": {\n      \"state\": \"completed\",\n      \"timestamp\": \"2025-05-19T03:52:07.632Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I've created a new issue in DamienBench/a2a-mcp-webhook-workshop: \\\"AI misclassifies bug severity\\\"\\n\\nLink: https://github.com/DamienBench/a2a-mcp-webhook-workshop/issues/91\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Create an issue with title 'AI misclassifies bug severity' and description 'During the trial, the AI sometimes misclassifies the severity of bugs.'\"\n          }\n        ]\n      }\n    }\n  },\n  \"salesforce\": {\n    \"id\": \"0b7b6058-3811-42d0-8ae4-f43ced41550f\",\n    \"status\": {\n      \"state\": \"completed\",\n      \"timestamp\": \"2025-05-19T03:52:32.106Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I have created an account with the name Acme Corp.\\n\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Create an account with name: Acme Corp\"\n          }\n        ]\n      }\n    }\n  }\n}"
+                }
+              ]
+            }
+          },
+          "artifacts": []
+        },
+        "agentMessages": {}
+      }
+    },
+    {
+      "id": "meeting-transcript-1747626159062",
+      "name": "Meeting Transcript Processor",
+      "timestamp": "2025-05-19T03:43:18.965Z",
+      "status": "failed",
+      "details": {
+        "webhookData": {
+          "transcript": "Meeting Transcript: Sales Discovery Call with Acme Corp - 5/18/2025\n\nParticipants:\n- Sarah Johnson (Account Executive, Our Company)\n- John Smith (CTO, Acme Corp)\n- Emma Davis (Head of Engineering, Acme Corp)\n\nSarah: Thank you for joining the call today. We're excited to discuss how our AI platform could help with your automation needs.\n\nJohn: Thanks for setting this up. We've been looking for a solution to automate our development workflows.\n\nEmma: Yes, particularly around code reviews and bug triage. Our team is spending too much time on these tasks.\n\nSarah: I understand. Our platform has specific features for development workflows. Let me show you how it works.\n\nJohn: That looks promising. One question - we found a bug in our trial where the AI sometimes misclassifies the severity of bugs.\n\nSarah: I'll make a note of that and have our engineers look into it. I'll create a bug report for this issue.\n\nEmma: Also, we'd like to integrate this with our Slack channels for team notifications. Is that possible?\n\nSarah: Absolutely! We have robust Slack integration capabilities. I'll share more details about that.\n\nJohn: Great. We're also using Salesforce for tracking our customer interactions. Can your system update Salesforce with actions taken?\n\nSarah: Yes, we offer Salesforce integration as well. I'll send you documentation on that.\n\nEmma: This sounds like it could work for us. What would the next steps be?\n\nSarah: I'll send a proposal with pricing and implementation details by tomorrow. Should I include anyone else?\n\nJohn: Please add our VP of Engineering to the proposal. I'll share their contact details after the call.\n\nSarah: Perfect! Thank you for your time today. I look forward to working with Acme Corp.",
+          "_clientRequestId": "meeting-transcript-1747626159052-txyumn3b6"
+        },
+        "result": {
+          "id": "meeting-transcript-1747626159062",
+          "status": {
+            "state": "completed",
+            "timestamp": "2025-05-19T03:43:18.956Z",
+            "message": {
+              "role": "agent",
+              "parts": [
+                {
+                  "type": "text",
+                  "text": "Successfully processed webhook: meeting-transcript\nResults: {\n  \"salesforce\": {\n    \"id\": \"f72de430-91b2-4ad9-9063-83dd2e50571a\",\n    \"status\": {\n      \"state\": \"failed\",\n      \"timestamp\": \"2025-05-19T03:42:42.172Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [\n      {\n        \"index\": 0,\n        \"name\": \"salesforce_unknown_unknown.json\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"{\\n  \\\"operation\\\": \\\"unknown\\\",\\n  \\\"objectType\\\": \\\"unknown\\\",\\n  \\\"fields\\\": {},\\n  \\\"id\\\": \\\"SF-1747626162171\\\",\\n  \\\"timestamp\\\": \\\"2025-05-19T03:42:42.171Z\\\",\\n  \\\"success\\\": false\\n}\"\n          }\n        ],\n        \"lastChunk\": true\n      }\n    ],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Update contact John Smith, set company: Acme Corp\"\n          }\n        ]\n      }\n    }\n  },\n  \"github\": {\n    \"id\": \"71b1368c-c155-41dc-9780-efa2d2ed0a99\",\n    \"status\": {\n      \"state\": \"completed\",\n      \"timestamp\": \"2025-05-19T03:42:54.894Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I've created a new issue in DamienBench/a2a-mcp-webhook-workshop: \\\"AI misclassifies bug severity\\\"\\n\\nLink: https://github.com/DamienBench/a2a-mcp-webhook-workshop/issues/90\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Create an issue with title 'AI misclassifies bug severity' and description 'During the trial, the AI sometimes misclassifies the severity of bugs. Please investigate.'\"\n          }\n        ]\n      }\n    }\n  },\n  \"slack\": {\n    \"id\": \"b0ae489e-b233-4f47-85d0-04c25d98bbb4\",\n    \"status\": {\n      \"state\": \"completed\",\n      \"timestamp\": \"2025-05-19T03:43:18.954Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I've sent your message to #test-slack-damien: \\\"Acme Corp is interested in Slack integration. I will share the documentation with them.\\\"\\n\\nView it here: https://bench-computing.slack.com/archives/C08NDF2TVM1/p1747626197090809\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Send a message to #test-slack-damien saying: Acme Corp is interested in Slack integration. I will share the documentation with them.\"\n          }\n        ]\n      }\n    }\n  }\n}"
+                }
+              ]
+            }
+          },
+          "artifacts": []
+        },
+        "agentMessages": {}
+      }
+    },
+    {
+      "id": "meeting-transcript-1747625521456",
+      "name": "Meeting Transcript Processor",
+      "timestamp": "2025-05-19T03:32:18.381Z",
+      "status": "failed",
+      "details": {
+        "webhookData": {
+          "transcript": "Meeting Transcript: Sales Discovery Call with Acme Corp - 5/18/2025\n\nParticipants:\n- Sarah Johnson (Account Executive, Our Company)\n- John Smith (CTO, Acme Corp)\n- Emma Davis (Head of Engineering, Acme Corp)\n\nSarah: Thank you for joining the call today. We're excited to discuss how our AI platform could help with your automation needs.\n\nJohn: Thanks for setting this up. We've been looking for a solution to automate our development workflows.\n\nEmma: Yes, particularly around code reviews and bug triage. Our team is spending too much time on these tasks.\n\nSarah: I understand. Our platform has specific features for development workflows. Let me show you how it works.\n\nJohn: That looks promising. One question - we found a bug in our trial where the AI sometimes misclassifies the severity of bugs.\n\nSarah: I'll make a note of that and have our engineers look into it. I'll create a bug report for this issue.\n\nEmma: Also, we'd like to integrate this with our Slack channels for team notifications. Is that possible?\n\nSarah: Absolutely! We have robust Slack integration capabilities. I'll share more details about that.\n\nJohn: Great. We're also using Salesforce for tracking our customer interactions. Can your system update Salesforce with actions taken?\n\nSarah: Yes, we offer Salesforce integration as well. I'll send you documentation on that.\n\nEmma: This sounds like it could work for us. What would the next steps be?\n\nSarah: I'll send a proposal with pricing and implementation details by tomorrow. Should I include anyone else?\n\nJohn: Please add our VP of Engineering to the proposal. I'll share their contact details after the call.\n\nSarah: Perfect! Thank you for your time today. I look forward to working with Acme Corp.",
+          "_clientRequestId": "meeting-transcript-1747625521441-pwebrkfte"
+        },
+        "result": {
+          "id": "meeting-transcript-1747625521456",
+          "status": {
+            "state": "completed",
+            "timestamp": "2025-05-19T03:32:18.373Z",
+            "message": {
+              "role": "agent",
+              "parts": [
+                {
+                  "type": "text",
+                  "text": "Successfully processed webhook: meeting-transcript\nResults: {\n  \"salesforce\": {\n    \"id\": \"56edec94-083a-46c8-8f69-f3ffb6bdb6a7\",\n    \"status\": {\n      \"state\": \"failed\",\n      \"timestamp\": \"2025-05-19T03:32:04.530Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I encountered an error while processing your Salesforce request: INVALID_ARGUMENT: Schema validation failed. Parse Errors:\\n\\n- (root): must have required property 'id'\\n\\nProvided data:\\n\\n{\\n  \\\"object\\\": \\\"Contact\\\",\\n  \\\"instructions\\\": \\\"Find contact John Smith\\\"\\n}\\n\\nRequired JSON schema:\\n\\n{\\n  \\\"type\\\": \\\"object\\\",\\n  \\\"properties\\\": {\\n    \\\"object\\\": {\\n      \\\"type\\\": \\\"string\\\",\\n      \\\"description\\\": \\\"The type of Salesforce object to find (e.g., Lead, Contact, Account, Opportunity)\\\"\\n    },\\n    \\\"id\\\": {\\n      \\\"type\\\": \\\"string\\\",\\n      \\\"description\\\": \\\"The ID of the record to find\\\"\\n    }\\n  },\\n  \\\"required\\\": [\\n    \\\"object\\\",\\n    \\\"id\\\"\\n  ],\\n  \\\"additionalProperties\\\": {},\\n  \\\"$schema\\\": \\\"http://json-schema.org/draft-07/schema#\\\"\\n}\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Update contact John Smith, set company: Acme Corp\"\n          }\n        ]\n      }\n    }\n  },\n  \"github\": {\n    \"id\": \"d5e65e7b-09fd-47bb-b05d-b9e3a41739aa\",\n    \"status\": {\n      \"state\": \"completed\",\n      \"timestamp\": \"2025-05-19T03:32:13.483Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I've created a new issue in DamienBench/a2a-mcp-webhook-workshop: \\\"Bug misclassifies severity of bugs\\\"\\n\\nLink: https://github.com/DamienBench/a2a-mcp-webhook-workshop/issues/89\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Create an issue with title 'Bug misclassifies severity of bugs' and description 'The AI sometimes misclassifies the severity of bugs.'\"\n          }\n        ]\n      }\n    }\n  },\n  \"slack\": {\n    \"id\": \"46113ec8-1309-4d96-9374-df0083df7942\",\n    \"status\": {\n      \"state\": \"completed\",\n      \"timestamp\": \"2025-05-19T03:32:18.370Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I've sent your message to #test-slack-damien: \\\"Acme Corp is interested in Slack integration for team notifications.\\\"\\n\\nView it here: https://bench-computing.slack.com/archives/C08NDF2TVM1/p1747625536552869\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Send a message to #test-slack-damien saying: Acme Corp is interested in Slack integration for team notifications.\"\n          }\n        ]\n      }\n    }\n  }\n}"
+                }
+              ]
+            }
+          },
+          "artifacts": []
+        },
+        "agentMessages": {}
+      }
+    },
+    {
+      "id": "meeting-transcript-1747624608480",
+      "name": "Meeting Transcript Processor",
+      "timestamp": "2025-05-19T03:17:04.774Z",
+      "status": "failed",
+      "details": {
+        "webhookData": {
+          "transcript": "Meeting Transcript: Sales Discovery Call with Acme Corp - 5/18/2025\n\nParticipants:\n- Sarah Johnson (Account Executive, Our Company)\n- John Smith (CTO, Acme Corp)\n- Emma Davis (Head of Engineering, Acme Corp)\n\nSarah: Thank you for joining the call today. We're excited to discuss how our AI platform could help with your automation needs.\n\nJohn: Thanks for setting this up. We've been looking for a solution to automate our development workflows.\n\nEmma: Yes, particularly around code reviews and bug triage. Our team is spending too much time on these tasks.\n\nSarah: I understand. Our platform has specific features for development workflows. Let me show you how it works.\n\nJohn: That looks promising. One question - we found a bug in our trial where the AI sometimes misclassifies the severity of bugs.\n\nSarah: I'll make a note of that and have our engineers look into it. I'll create a bug report for this issue.\n\nEmma: Also, we'd like to integrate this with our Slack channels for team notifications. Is that possible?\n\nSarah: Absolutely! We have robust Slack integration capabilities. I'll share more details about that.\n\nJohn: Great. We're also using Salesforce for tracking our customer interactions. Can your system update Salesforce with actions taken?\n\nSarah: Yes, we offer Salesforce integration as well. I'll send you documentation on that.\n\nEmma: This sounds like it could work for us. What would the next steps be?\n\nSarah: I'll send a proposal with pricing and implementation details by tomorrow. Should I include anyone else?\n\nJohn: Please add our VP of Engineering to the proposal. I'll share their contact details after the call.\n\nSarah: Perfect! Thank you for your time today. I look forward to working with Acme Corp.",
+          "_clientRequestId": "meeting-transcript-1747624608463-ijc595z4p"
+        },
+        "result": {
+          "id": "meeting-transcript-1747624608480",
+          "status": {
+            "state": "completed",
+            "timestamp": "2025-05-19T03:17:04.765Z",
+            "message": {
+              "role": "agent",
+              "parts": [
+                {
+                  "type": "text",
+                  "text": "Successfully processed webhook: meeting-transcript\nResults: {\n  \"salesforce\": {\n    \"id\": \"799df909-0768-42d8-a169-e66479465bc1\",\n    \"status\": {\n      \"state\": \"failed\",\n      \"timestamp\": \"2025-05-19T03:16:51.371Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I was unable to update the Contact record. Please check the logs for more details.\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [\n      {\n        \"index\": 0,\n        \"name\": \"salesforce_update_contact.json\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"{\\n  \\\"operation\\\": \\\"update\\\",\\n  \\\"objectType\\\": \\\"Contact\\\",\\n  \\\"fields\\\": {\\n    \\\"description\\\": \\\"Discussed AI platform integration on 5/18/2025\\\",\\n    \\\"name\\\": \\\"John Smith\\\"\\n  },\\n  \\\"id\\\": \\\"sf-placeholder\\\",\\n  \\\"timestamp\\\": \\\"2025-05-19T03:16:51.371Z\\\",\\n  \\\"success\\\": false\\n}\"\n          }\n        ],\n        \"lastChunk\": true\n      }\n    ],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Update contact John Smith, set description: Discussed AI platform integration on 5/18/2025.\"\n          }\n        ]\n      }\n    }\n  },\n  \"github\": {\n    \"id\": \"eace8200-3c74-488e-9b97-95af8ce0c852\",\n    \"status\": {\n      \"state\": \"failed\",\n      \"timestamp\": \"2025-05-19T03:16:51.389Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I couldn't create the issue in DamienBench/a2a-mcp-webhook-workshop. Please try again.\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Create an issue with title 'Bug misclassifies severity of bugs'\"\n          }\n        ]\n      }\n    }\n  },\n  \"slack\": {\n    \"id\": \"a8a10b64-509d-486b-804f-23cf71840d90\",\n    \"status\": {\n      \"state\": \"completed\",\n      \"timestamp\": \"2025-05-19T03:17:04.763Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I've sent your message to #test-slack-damien: \\\"Acme Corp is interested in Slack integration.\\\"\\n\\nView it here: https://bench-computing.slack.com/archives/C08NDF2TVM1/p1747624622969689\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Send a message to #test-slack-damien saying: Acme Corp is interested in Slack integration.\"\n          }\n        ]\n      }\n    }\n  }\n}"
+                }
+              ]
+            }
+          },
+          "artifacts": []
+        },
+        "agentMessages": {}
+      }
+    },
+    {
+      "id": "meeting-transcript-1747623230774",
+      "name": "Meeting Transcript Processor",
+      "timestamp": "2025-05-19T02:54:02.021Z",
+      "status": "failed",
+      "details": {
+        "webhookData": {
+          "transcript": "Meeting Transcript: Sales Discovery Call with Acme Corp - 5/18/2025\n\nParticipants:\n- Sarah Johnson (Account Executive, Our Company)\n- John Smith (CTO, Acme Corp)\n- Emma Davis (Head of Engineering, Acme Corp)\n\nSarah: Thank you for joining the call today. We're excited to discuss how our AI platform could help with your automation needs.\n\nJohn: Thanks for setting this up. We've been looking for a solution to automate our development workflows.\n\nEmma: Yes, particularly around code reviews and bug triage. Our team is spending too much time on these tasks.\n\nSarah: I understand. Our platform has specific features for development workflows. Let me show you how it works.\n\nJohn: That looks promising. One question - we found a bug in our trial where the AI sometimes misclassifies the severity of bugs.\n\nSarah: I'll make a note of that and have our engineers look into it. I'll create a bug report for this issue.\n\nEmma: Also, we'd like to integrate this with our Slack channels for team notifications. Is that possible?\n\nSarah: Absolutely! We have robust Slack integration capabilities. I'll share more details about that.\n\nJohn: Great. We're also using Salesforce for tracking our customer interactions. Can your system update Salesforce with actions taken?\n\nSarah: Yes, we offer Salesforce integration as well. I'll send you documentation on that.\n\nEmma: This sounds like it could work for us. What would the next steps be?\n\nSarah: I'll send a proposal with pricing and implementation details by tomorrow. Should I include anyone else?\n\nJohn: Please add our VP of Engineering to the proposal. I'll share their contact details after the call.\n\nSarah: Perfect! Thank you for your time today. I look forward to working with Acme Corp.",
+          "_clientRequestId": "meeting-transcript-1747623230764-frerxk4z7"
+        },
+        "result": {
+          "id": "meeting-transcript-1747623230774",
+          "status": {
+            "state": "completed",
+            "timestamp": "2025-05-19T02:54:02.013Z",
+            "message": {
+              "role": "agent",
+              "parts": [
+                {
+                  "type": "text",
+                  "text": "Successfully processed webhook: meeting-transcript\nResults: {\n  \"github\": {\n    \"id\": \"34995292-3855-4da5-8b4b-e481dbe57086\",\n    \"status\": {\n      \"state\": \"failed\",\n      \"timestamp\": \"2025-05-19T02:53:53.534Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I couldn't create the issue in DamienBench/a2a-mcp-webhook-workshop. Please try again.\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Create an issue with title 'Bug misclassifies severity of bugs'\"\n          }\n        ]\n      }\n    }\n  },\n  \"salesforce\": {\n    \"id\": \"f0bb3808-a670-48c4-89f1-5133aafce139\",\n    \"status\": {\n      \"state\": \"failed\",\n      \"timestamp\": \"2025-05-19T02:53:53.536Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I was unable to update the Account record. Please check the logs for more details.\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [\n      {\n        \"index\": 0,\n        \"name\": \"salesforce_update_account.json\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"{\\n  \\\"operation\\\": \\\"update\\\",\\n  \\\"objectType\\\": \\\"Account\\\",\\n  \\\"fields\\\": {},\\n  \\\"id\\\": \\\"SF-1747623233536\\\",\\n  \\\"timestamp\\\": \\\"2025-05-19T02:53:53.536Z\\\",\\n  \\\"success\\\": false\\n}\"\n          }\n        ],\n        \"lastChunk\": true\n      }\n    ],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Update contact John Smith, set company: Acme Corp\"\n          }\n        ]\n      }\n    }\n  },\n  \"slack\": {\n    \"id\": \"99309384-449a-4efe-a885-b8e644c64718\",\n    \"status\": {\n      \"state\": \"completed\",\n      \"timestamp\": \"2025-05-19T02:54:02.011Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I've sent your message to #test-slack-damien: \\\"Acme Corp is interested in Slack integration for team notifications.\\\"\\n\\nView it here: https://bench-computing.slack.com/archives/C08NDF2TVM1/p1747623240147139\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Send a message to #test-slack-damien saying: Acme Corp is interested in Slack integration for team notifications.\"\n          }\n        ]\n      }\n    }\n  }\n}"
+                }
+              ]
+            }
+          },
+          "artifacts": []
+        },
+        "agentMessages": {}
+      }
+    },
+    {
+      "id": "meeting-transcript-1747622997323",
+      "name": "Meeting Transcript Processor",
+      "timestamp": "2025-05-19T02:50:11.991Z",
+      "status": "failed",
+      "details": {
+        "webhookData": {
+          "transcript": "Meeting Transcript: Sales Discovery Call with Acme Corp - 5/18/2025\n\nParticipants:\n- Sarah Johnson (Account Executive, Our Company)\n- John Smith (CTO, Acme Corp)\n- Emma Davis (Head of Engineering, Acme Corp)\n\nSarah: Thank you for joining the call today. We're excited to discuss how our AI platform could help with your automation needs.\n\nJohn: Thanks for setting this up. We've been looking for a solution to automate our development workflows.\n\nEmma: Yes, particularly around code reviews and bug triage. Our team is spending too much time on these tasks.\n\nSarah: I understand. Our platform has specific features for development workflows. Let me show you how it works.\n\nJohn: That looks promising. One question - we found a bug in our trial where the AI sometimes misclassifies the severity of bugs.\n\nSarah: I'll make a note of that and have our engineers look into it. I'll create a bug report for this issue.\n\nEmma: Also, we'd like to integrate this with our Slack channels for team notifications. Is that possible?\n\nSarah: Absolutely! We have robust Slack integration capabilities. I'll share more details about that.\n\nJohn: Great. We're also using Salesforce for tracking our customer interactions. Can your system update Salesforce with actions taken?\n\nSarah: Yes, we offer Salesforce integration as well. I'll send you documentation on that.\n\nEmma: This sounds like it could work for us. What would the next steps be?\n\nSarah: I'll send a proposal with pricing and implementation details by tomorrow. Should I include anyone else?\n\nJohn: Please add our VP of Engineering to the proposal. I'll share their contact details after the call.\n\nSarah: Perfect! Thank you for your time today. I look forward to working with Acme Corp.",
+          "_clientRequestId": "meeting-transcript-1747622997308-62m5f9mi2"
+        },
+        "result": {
+          "id": "meeting-transcript-1747622997323",
+          "status": {
+            "state": "completed",
+            "timestamp": "2025-05-19T02:50:11.982Z",
+            "message": {
+              "role": "agent",
+              "parts": [
+                {
+                  "type": "text",
+                  "text": "Successfully processed webhook: meeting-transcript\nResults: {\n  \"github\": {\n    \"id\": \"de57fcac-83e6-40a9-b63d-e62eed18795d\",\n    \"status\": {\n      \"state\": \"failed\",\n      \"timestamp\": \"2025-05-19T02:50:00.337Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I couldn't create the issue in DamienBench/a2a-mcp-webhook-workshop. Please try again.\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Create an issue with title 'Bug misclassifies severity of bugs'\"\n          }\n        ]\n      }\n    }\n  },\n  \"salesforce\": {\n    \"id\": \"843e10ea-85df-4b7f-82a3-f1ffc2d3064b\",\n    \"status\": {\n      \"state\": \"failed\",\n      \"timestamp\": \"2025-05-19T02:50:00.340Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I was unable to update the Opportunity record. Please check the logs for more details.\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [\n      {\n        \"index\": 0,\n        \"name\": \"salesforce_update_opportunity.json\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"{\\n  \\\"operation\\\": \\\"update\\\",\\n  \\\"objectType\\\": \\\"Opportunity\\\",\\n  \\\"fields\\\": {},\\n  \\\"id\\\": \\\"SF-1747623000340\\\",\\n  \\\"timestamp\\\": \\\"2025-05-19T02:50:00.340Z\\\",\\n  \\\"success\\\": false\\n}\"\n          }\n        ],\n        \"lastChunk\": true\n      }\n    ],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Update the Acme Corp opportunity to reflect interest in Salesforce integration\"\n          }\n        ]\n      }\n    }\n  },\n  \"slack\": {\n    \"id\": \"d08d4614-2cb5-460f-8917-4acfab99094d\",\n    \"status\": {\n      \"state\": \"completed\",\n      \"timestamp\": \"2025-05-19T02:50:11.980Z\",\n      \"message\": {\n        \"role\": \"agent\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"I've sent your message to #test-slack-damien: \\\"Acme Corp would like to integrate with Slack channels for team notifications.\\\"\\n\\nView it here: https://bench-computing.slack.com/archives/C08NDF2TVM1/p1747623010041549\"\n          }\n        ]\n      }\n    },\n    \"artifacts\": [],\n    \"task\": {\n      \"message\": {\n        \"role\": \"user\",\n        \"parts\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"Send a message to #test-slack-damien saying: Acme Corp would like to integrate with Slack channels for team notifications.\"\n          }\n        ]\n      }\n    }\n  }\n}"
+                }
+              ]
+            }
+          },
+          "artifacts": []
+        },
+        "agentMessages": {}
+      }
+    }
+  ]
+}

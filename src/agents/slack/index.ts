@@ -45,18 +45,71 @@ async function* slackAgent({
     const slackTools = getSlackTools();
     
     // Use the prompt file to run the Slack agent with Genkit tools
-    const response = await slackAgentPrompt(
-      { now: new Date().toISOString() },
-      {
-        messages: [
+    // Add retry logic with exponential backoff for rate limit errors
+    let response;
+    let retries = 0;
+    const maxRetries = 5;
+    const baseDelay = 1000; // 1 second initial delay
+    
+    while (retries <= maxRetries) {
+      try {
+        // If we're retrying, notify the user
+        if (retries > 0) {
+          yield {
+            state: "working",
+            message: {
+              role: "agent",
+              parts: [{ type: "text", text: `Retrying due to API rate limit (attempt ${retries}/${maxRetries})...` }],
+            },
+          };
+          console.log(`[SlackAgent] Retry attempt ${retries}/${maxRetries}`);
+        }
+        
+        response = await slackAgentPrompt(
+          { now: new Date().toISOString() },
           {
-            role: "user",
-            content: [{ text: userText }]
+            messages: [
+              {
+                role: "user",
+                content: [{ text: userText }]
+              }
+            ],
+            tools: slackTools
           }
-        ],
-        tools: slackTools
+        );
+        
+        // If we get here, the request succeeded, so break out of the retry loop
+        break;
+      } catch (error: any) {
+        // Check if it's a rate limit error (429)
+        const isRateLimit = error.message && (
+          error.message.includes("429 Too Many Requests") || 
+          error.message.includes("You exceeded your current quota")
+        );
+        
+        if (isRateLimit && retries < maxRetries) {
+          // Calculate exponential backoff with jitter
+          const delay = baseDelay * Math.pow(2, retries) + Math.random() * 1000;
+          console.log(`[SlackAgent] Rate limit exceeded. Retrying in ${delay}ms...`);
+          
+          // Notify user about the delay
+          yield {
+            state: "working",
+            message: {
+              role: "agent",
+              parts: [{ type: "text", text: `Google API rate limit reached. Waiting ${Math.round(delay/1000)} seconds before retrying...` }],
+            },
+          };
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, delay));
+          retries++;
+        } else {
+          // Either not a rate limit error or we've exceeded max retries
+          throw error;
+        }
       }
-    );
+    }
     
     // Initialize tool usage variables
     let success = false;
@@ -176,7 +229,7 @@ async function initServer() {
     {
       card: {
         name: "SlackAgent",
-        description: "A Slack messaging agent using MCP",
+        description: "A Slack messaging agent using MCP that sends messages to only the #test-slack-damien Slack channel.",
         url: `http://localhost:${port}`,
         provider: {
           organization: "A2A Samples",
@@ -194,7 +247,7 @@ async function initServer() {
           {
             id: "slack_messaging",
             name: "Slack Messaging",
-            description: "Sends messages to specified Slack channels.",
+            description: "Sends messages to only the #test-slack-damien Slack channel.",
             tags: ["slack", "messaging", "communication"],
             examples: [
               "Send a message to #test-slack-damien saying Hello, team!",
