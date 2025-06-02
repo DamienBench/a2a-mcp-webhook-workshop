@@ -194,7 +194,7 @@ async function initServer() {
     {
       card: {
         name: "GitHub Agent",
-        description: "An agent that can create GitHub issues",
+        description: "An agent that can create GitHub issues in the repo https://github.com/DamienBench/a2a-mcp-webhook-workshop",
         url: `http://localhost:${port}`,
         provider: {
           organization: "A2A Samples",

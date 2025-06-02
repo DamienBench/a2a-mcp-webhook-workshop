@@ -136,10 +136,10 @@ export class A2AServer {
 
   /**
    * Starts the Express server listening on the specified port.
-   * @param port Port number to listen on. Defaults to 41241.
+   * @param port Port number to listen on. Defaults to 41240.
    * @returns The running Express application instance.
    */
-  start(port = 41241): express.Express {
+  start(port = 41240): express.Express {
     const app = express();
 
     // Configure CORS

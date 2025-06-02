@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { A2AClient } from '../a2a/client/client.js';
 import { existsSync, writeFileSync, readFileSync } from 'node:fs';
 import crypto from 'node:crypto';
+import { Server } from 'node:http';
 
 // Get the paths for configs and resources
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -31,6 +32,7 @@ interface WebhookConfig {
   processor: 'meeting-transcript' | 'custom' | string;
   processorConfig?: Record<string, any>;
   hostAgentUrl?: string;
+  promptTemplate?: string;
 }
 
 /**
@@ -42,7 +44,7 @@ interface WebhookStats {
     host: number;
     github: number;
     slack: number;
-    salesforce: number;
+    bench: number;
   };
   recentWebhooks: WebhookInvocation[];
 }
@@ -67,6 +69,7 @@ interface WebhookInvocation {
  */
 export class WebhookServer {
   private app: express.Express;
+  private server: Server | null = null;
   private port: number;
   private configs: Map<string, WebhookConfig> = new Map();
   private hostAgentClient: A2AClient;
@@ -84,7 +87,7 @@ export class WebhookServer {
         host: 0,
         github: 0,
         slack: 0,
-        salesforce: 0
+        bench: 0
       },
       recentWebhooks: []
     };
@@ -104,50 +107,36 @@ export class WebhookServer {
   /**
    * Load all webhook configurations from the host agent config directory
    */
-  private async loadConfigurations(): Promise<void> {
+  private async loadWebhookConfigurations(): Promise<void> {
+    console.log(`[WebhookServer] Loading webhook configurations...`);
+    
+    // Get the webhook configurations from the host agent directory
+    const hostAgentConfigDir = path.join(process.cwd(), 'src', 'agents', 'host', 'configs');
+    console.log(`[WebhookServer] Host agent config dir: ${hostAgentConfigDir}`);
+    
     try {
-      console.log(`[DUPLICATION DEBUG] Loading webhook configurations...`);
+      // Load webhook configuration from host agent
+      const webhookConfigPath = path.join(hostAgentConfigDir, 'webhook.json');
+      console.log(`[WebhookServer] Looking for webhook config at: ${webhookConfigPath}`);
       
-      // Log the paths we're looking at
-      console.log(`[DUPLICATION DEBUG] Host agent config dir: ${hostAgentConfigDir}`);
-      
-      // Only load from the host agent config directory
-      if (existsSync(hostAgentConfigDir)) {
-        try {
-          const webhookConfigPath = path.join(hostAgentConfigDir, 'webhook.json');
-          console.log(`[DUPLICATION DEBUG] Looking for webhook config at: ${webhookConfigPath}`);
-          
-          if (existsSync(webhookConfigPath)) {
-            const configData = await fs.readFile(webhookConfigPath, 'utf-8');
-            const config = JSON.parse(configData) as WebhookConfig;
-            
-            if (config.id) {
-              this.configs.set(config.id, config);
-              console.log(`[DUPLICATION DEBUG] Loaded webhook config from host agent: ${config.id} - ${config.name}`);
-              console.log(`[DUPLICATION DEBUG] Config contains ${config.processorConfig?.agents?.length || 0} agent entries`);
-            }
-          } else {
-            console.warn(`[WebhookServer] No webhook configuration found at ${webhookConfigPath}`);
-          }
-        } catch (err) {
-          console.error(`[WebhookServer] Error loading webhook config from host agent:`, err);
-        }
+      if (await fs.access(webhookConfigPath).then(() => true).catch(() => false)) {
+        const configData = await fs.readFile(webhookConfigPath, 'utf-8');
+        const config = JSON.parse(configData) as WebhookConfig;
+        
+        // Store the configuration
+        this.configs.set(config.id, config);
+        console.log(`[WebhookServer] Loaded webhook config from host agent: ${config.id} - ${config.name}`);
+        console.log(`[WebhookServer] Config contains ${config.processorConfig?.agents?.length || 0} agent entries`);
       } else {
-        console.warn(`[WebhookServer] Host agent config directory not found at ${hostAgentConfigDir}`);
-      }
-      
-      // Log the number of loaded configurations
-      console.log(`[DUPLICATION DEBUG] Configs map size: ${this.configs.size}`);
-      console.log(`[DUPLICATION DEBUG] Configs map keys: ${Array.from(this.configs.keys()).join(', ')}`);
-      console.log(`[WebhookServer] Loaded ${this.configs.size} webhook configurations`);
-      
-      // If no configurations exist, warn about it
-      if (this.configs.size === 0) {
-        console.warn('[WebhookServer] No webhook configurations found - expecting one to be present in host agent configs');
+        console.warn(`[WebhookServer] No webhook configuration found at: ${webhookConfigPath}`);
       }
     } catch (err) {
       console.error('[WebhookServer] Error loading webhook configurations:', err);
     }
+    
+    // Log final configuration state
+    console.log(`[WebhookServer] Configs map size: ${this.configs.size}`);
+    console.log(`[WebhookServer] Configs map keys: ${Array.from(this.configs.keys()).join(', ')}`);
   }
 
   /**
@@ -209,22 +198,22 @@ export class WebhookServer {
       const webhookId = req.params.id;
       const webhookData = req.body;
       
-      console.log(`[DUPLICATION DEBUG] Received webhook request for ${webhookId} at ${new Date().toISOString()}`);
-      console.log(JSON.stringify(webhookData, null, 2));
+      console.log(`[WebhookServer] Received webhook request for ${webhookId} at ${new Date().toISOString()}`);
+      console.log(JSON.stringify(webhookData));
       
       // Calculate a simple hash of the request body for deduplication
       const requestBody = JSON.stringify(webhookData);
       const requestHash = crypto.createHash('sha256').update(requestBody).digest('hex').substring(0, 12);
       const dedupKey = `${webhookId}-${requestHash}`;
       
-      console.log(`[DUPLICATION DEBUG] Request hash: ${requestHash}, dedupKey: ${dedupKey}`);
+      console.log(`[WebhookServer] Request hash: ${requestHash}, dedupKey: ${dedupKey}`);
       
       // Check for duplicate submission (within 10 seconds)
       const now = Date.now();
       const lastSubmissionTime = this.recentTestSubmissions.get(dedupKey);
       
       if (lastSubmissionTime && (now - lastSubmissionTime) < 10000) {
-        console.log(`[DUPLICATION DEBUG] Duplicate webhook detected within 10 seconds: ${dedupKey}`);
+        console.log(`[WebhookServer] Duplicate webhook detected within 10 seconds: ${dedupKey}`);
         return res.status(409).json({ 
           error: 'Duplicate request',
           message: 'A similar webhook was submitted within the last 10 seconds. Please wait before retrying.'
@@ -233,7 +222,7 @@ export class WebhookServer {
       
       // Record this submission to prevent duplicates
       this.recentTestSubmissions.set(dedupKey, now);
-      console.log(`[DUPLICATION DEBUG] Recorded submission with dedupKey: ${dedupKey}`);
+      console.log(`[WebhookServer] Recorded submission with dedupKey: ${dedupKey}`);
       
       // Check if webhook configuration exists
       const config = this.configs.get(webhookId);
@@ -246,7 +235,7 @@ export class WebhookServer {
       
       // Generate a unique invocation ID
       const invocationId = `${webhookId}-${now}`;
-      console.log(`[DUPLICATION DEBUG] Generated invocationId: ${invocationId}`);
+      console.log(`[WebhookServer] Generated invocationId: ${invocationId}`);
       
       // Record the webhook with "processing" status
       this.recordWebhookInvocation(webhookId, config.name, webhookData, null, 'processing', invocationId);
@@ -272,15 +261,15 @@ export class WebhookServer {
    */
   private async processWebhookAsync(webhookId: string, invocationId: string, webhookData: any, config: WebhookConfig): Promise<void> {
     try {
-      console.log(`[DUPLICATION DEBUG] Starting processWebhookAsync for invocationId: ${invocationId}`);
+      console.log(`[WebhookServer] Starting processWebhookAsync for invocationId: ${invocationId}`);
       
       // Process the webhook data - pass the invocation ID to ensure stable task ID generation
       const result = await this.processWebhookData(webhookData, config, invocationId);
       
       // Add debug log to see result structure
-      console.log(`[DUPLICATION DEBUG] Webhook processing complete for ${invocationId}`);
+      console.log(`[WebhookServer] Webhook processing complete for ${invocationId}`);
       console.log(`[WebhookServer] Processing webhook result for ${webhookId}:`, 
-        JSON.stringify(result, null, 2).substring(0, 500) + '...');
+        JSON.stringify(result).substring(0, 500) + '...');
       
       // Determine overall success status using our helper method
       const success = this.determineWebhookSuccess(result);
@@ -331,15 +320,15 @@ export class WebhookServer {
     
     try {
       // Add explicit logging for config and processorConfig
-      console.log('CONFIG DEBUG: Full webhook config:', JSON.stringify(config, null, 2));
-      console.log('CONFIG DEBUG: processorConfig:', JSON.stringify(config.processorConfig, null, 2));
+      console.log('[WebhookServer] Full webhook config:', JSON.stringify(config));
+      console.log('[WebhookServer] processorConfig:', JSON.stringify(config.processorConfig));
       if (config.processorConfig && 'parallel' in config.processorConfig) {
-        console.log('CONFIG DEBUG: parallel setting:', config.processorConfig.parallel);
+        console.log('[WebhookServer] parallel setting:', config.processorConfig.parallel);
       }
       
       // Use invocation ID if provided to ensure stability of the task ID
       const stableId = invocationId || `webhook-${config.id}-${Date.now()}`;
-      console.log(`[DUPLICATION DEBUG] Sending to host agent with stableId: ${stableId}`);
+      console.log(`[WebhookServer] Sending to host agent with stableId: ${stableId}`);
       
       // Create task parameters
       const params = {
@@ -353,6 +342,7 @@ export class WebhookServer {
               webhookId: config.id,
               webhookName: config.name,
               processorConfig: config.processorConfig || {}, // Include the processor configuration
+              promptTemplate: config.promptTemplate || null, // Include the custom prompt template
               data,
               requestId: stableId // Include the stable ID as the requestId for deduplication
             })
@@ -361,18 +351,18 @@ export class WebhookServer {
       };
       
       // Log what we're sending to the host agent
-      console.log('CONFIG DEBUG: Sending to host agent:', JSON.stringify(params.message.parts[0].text, null, 2));
+      console.log('[WebhookServer] Sending to host agent:', JSON.stringify(params.message.parts[0].text));
       
       // Send task to host agent - add timeout and error handling
       try {
-        console.log(`[DUPLICATION DEBUG] Sending task to host agent at ${hostAgentUrl} with ID ${stableId}`);
+        console.log(`[WebhookServer] Sending task to host agent at ${hostAgentUrl} with ID ${stableId}`);
         const response = await Promise.race([
           client.sendTask(params),
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Connection to host agent timed out')), 120000)
           )
         ]);
-        console.log(`[DUPLICATION DEBUG] Received response from host agent for task ${stableId}`);
+        console.log(`[WebhookServer] Received response from host agent for task ${stableId}`);
         return response;
       } catch (connError) {
         // Handle connection errors with more details
@@ -505,25 +495,23 @@ export class WebhookServer {
       const webhookId = req.params.id;
       const testData = req.body;
       
-      console.log(`[DUPLICATION DEBUG] Testing webhook ${webhookId} at ${new Date().toISOString()}`);
-      console.log(JSON.stringify(testData, null, 2));
+      console.log(`[WebhookServer] Testing webhook ${webhookId} at ${new Date().toISOString()}`);
       
       // Calculate a simple hash of the request body for deduplication
       const requestBody = JSON.stringify(testData);
       const requestHash = crypto.createHash('sha256').update(requestBody).digest('hex').substring(0, 12);
-      const dedupKey = `${webhookId}-${requestHash}`;
+      const dedupKey = `test-${webhookId}-${requestHash}`;
       
-      console.log(`[DUPLICATION DEBUG] Test request hash: ${requestHash}, dedupKey: ${dedupKey}`);
-      console.log(`[DUPLICATION DEBUG] Current recentTestSubmissions Map has ${this.recentTestSubmissions.size} entries`);
+      console.log(`[WebhookServer] Test request hash: ${requestHash}, dedupKey: ${dedupKey}`);
+      console.log(`[WebhookServer] Current recentTestSubmissions Map has ${this.recentTestSubmissions.size} entries`);
       
       // Check for duplicate submission (within 10 seconds)
       const now = Date.now();
       const lastSubmissionTime = this.recentTestSubmissions.get(dedupKey);
-      
-      console.log(`[DUPLICATION DEBUG] Last submission time for ${dedupKey}: ${lastSubmissionTime || 'none'}`);
+      console.log(`[WebhookServer] Last submission time for ${dedupKey}: ${lastSubmissionTime || 'none'}`);
       
       if (lastSubmissionTime && (now - lastSubmissionTime) < 10000) {
-        console.log(`[DUPLICATION DEBUG] Duplicate webhook test detected within 10 seconds: ${dedupKey}`);
+        console.log(`[WebhookServer] Duplicate webhook test detected within 10 seconds: ${dedupKey}`);
         return res.status(409).json({ 
           error: 'Duplicate request',
           message: 'A similar webhook test was submitted within the last 10 seconds. Please wait before retrying.'
@@ -532,7 +520,7 @@ export class WebhookServer {
       
       // Record this submission to prevent duplicates
       this.recentTestSubmissions.set(dedupKey, now);
-      console.log(`[DUPLICATION DEBUG] Recorded test submission with dedupKey: ${dedupKey}`);
+      console.log(`[WebhookServer] Recorded test submission with dedupKey: ${dedupKey}`);
       
       // Periodically clean up old entries (every 100 requests)
       if (this.recentTestSubmissions.size > 100) {
@@ -555,7 +543,7 @@ export class WebhookServer {
       
       // Generate a unique invocation ID
       const invocationId = `${webhookId}-${now}`;
-      console.log(`[DUPLICATION DEBUG] Generated test invocationId: ${invocationId}`);
+      console.log(`[WebhookServer] Generated test invocationId: ${invocationId}`);
       
       // Record the webhook with "processing" status
       this.recordWebhookInvocation(webhookId, config.name, testData, null, 'processing', invocationId);
@@ -582,7 +570,7 @@ export class WebhookServer {
   private async getAgentLogs(req: Request, res: Response, next: NextFunction): Promise<void | Response> {
     try {
       const agentType = req.params.agent;
-      const validAgents = ['host', 'github', 'slack', 'salesforce', 'webhook'];
+      const validAgents = ['host', 'github', 'slack', 'webhook', 'bench'];
       
       // Validate agent type
       if (!validAgents.includes(agentType)) {
@@ -638,6 +626,8 @@ export class WebhookServer {
     invocationId?: string
   ): Promise<void> {
     try {
+      console.log(`[STATS DEBUG] ===== UPDATED CODE RUNNING ===== recordWebhookInvocation called: webhookId=${webhookId}, status=${status}, invocationId=${invocationId}`);
+      
       // Generate a unique invocation ID if not provided
       const finalInvocationId = invocationId || `${webhookId}-${Date.now()}`;
       
@@ -645,28 +635,94 @@ export class WebhookServer {
       const existingIndex = this.stats.recentWebhooks.findIndex(webhook => webhook.id === finalInvocationId);
       const isUpdating = existingIndex !== -1;
       
+      console.log(`[STATS DEBUG] isUpdating=${isUpdating}, existingIndex=${existingIndex}`);
+      
       // Only increment stats when creating a new record, not when updating
       if (!isUpdating) {
+        console.log(`[STATS DEBUG] Creating new webhook record, incrementing totalProcessed from ${this.stats.totalProcessed}`);
         this.stats.totalProcessed++;
         
         // For processing status, we only increment the host agent
         if (status === 'processing') {
+          console.log(`[STATS DEBUG] Processing status, incrementing host agent from ${this.stats.agentInvocations.host}`);
           this.stats.agentInvocations.host++;
         }
+      } else {
+        console.log(`[STATS DEBUG] Updating existing webhook record, NOT incrementing totalProcessed`);
       }
       
-      // For completed webhooks (not processing status), check if other agents were invoked
-      if (status !== 'processing' && result && result.results) {
-        // Look for agent results in the response
-        for (const agentResult of result.results) {
+      console.log(`[STATS DEBUG] About to check agent counting condition: status="${status}", hasResult=${!!result}, condition=${status !== 'processing' && !!result}`);
+      
+      // Count agent invocations for completed webhooks (both new and updated records)
+      if (status !== 'processing' && result) {
+        console.log(`[STATS DEBUG] Completed webhook, checking for agent results`);
+        
+        // Only increment host agent if this is a new record (not an update)
+        if (!isUpdating) {
+          this.stats.agentInvocations.host++;
+          console.log(`[STATS DEBUG] Incremented host agent to ${this.stats.agentInvocations.host}`);
+        }
+        
+        // Parse the actual agent results from the result structure
+        let agentResults: any[] = [];
+        
+        console.log(`[STATS DEBUG] Checking result structure:`, {
+          hasResult: !!result,
+          hasStatus: !!result?.status,
+          hasMessage: !!result?.status?.message,
+          hasParts: !!result?.status?.message?.parts,
+          partsLength: result?.status?.message?.parts?.length || 0
+        });
+        
+        // Extract agent results from the actual result structure
+        if (result.status?.message?.parts?.[0]?.text) {
+          console.log(`[STATS DEBUG] Found text in result, attempting to parse:`, result.status.message.parts[0].text.substring(0, 200) + '...');
+          try {
+            const parsedResponse = JSON.parse(result.status.message.parts[0].text);
+            console.log(`[STATS DEBUG] Successfully parsed JSON response:`, {
+              hasAgentResults: !!parsedResponse.agentResults,
+              isArray: Array.isArray(parsedResponse.agentResults),
+              agentResultsLength: parsedResponse.agentResults?.length || 0
+            });
+            
+            if (parsedResponse.agentResults && Array.isArray(parsedResponse.agentResults)) {
+              agentResults = parsedResponse.agentResults;
+              console.log(`[STATS DEBUG] Found ${agentResults.length} agent results in webhook response`);
+            }
+          } catch (err) {
+            console.warn('[STATS DEBUG] Failed to parse agent results from webhook response:', err.message);
+          }
+        } else {
+          console.log(`[STATS DEBUG] No text found in result.status.message.parts[0]`);
+        }
+        
+        // Count agent invocations from the parsed results
+        for (const agentResult of agentResults) {
           if (agentResult.agent) {
             const agentType = agentResult.agent.toLowerCase();
-            if (agentType.includes('github')) {
-              this.stats.agentInvocations.github++;
-            } else if (agentType.includes('slack')) {
-              this.stats.agentInvocations.slack++;
-            } else if (agentType.includes('salesforce')) {
-              this.stats.agentInvocations.salesforce++;
+            console.log(`[STATS DEBUG] Incrementing stats for agent: ${agentType} from ${this.stats.agentInvocations[agentType] || 0}`);
+            this.updateAgentInvocationStats(agentType);
+            console.log(`[STATS DEBUG] Agent ${agentType} now has ${this.stats.agentInvocations[agentType] || 0} invocations`);
+          }
+        }
+        
+        // Also check legacy result.results path for backwards compatibility
+        if (result.results) {
+          console.log('[STATS DEBUG] Also checking legacy result.results path for agent results');
+          
+          // Handle both array format and object format (with agent types as keys)
+          if (Array.isArray(result.results)) {
+            // Array format
+            for (const agentResult of result.results) {
+              if (agentResult.agent) {
+                const agentType = agentResult.agent.toLowerCase();
+                this.updateAgentInvocationStats(agentType);
+              }
+            }
+          } else if (typeof result.results === 'object') {
+            // Object format with agent types as keys
+            for (const agentType of Object.keys(result.results)) {
+              this.updateAgentInvocationStats(agentType.toLowerCase());
             }
           }
         }
@@ -680,14 +736,39 @@ export class WebhookServer {
       // Extract agent messages if available
       let agentMessages: Record<string, string> = {};
       
-      // Check directly for the tasks object first (most reliable source)
-      if (result?.tasks && typeof result.tasks === 'object') {
-        console.log('[WebhookServer] Found tasks object in result:', result.tasks);
+      // First, try to parse the host agent response JSON to get the webhook result
+      if (result?.status?.message?.parts?.[0]?.text) {
+        try {
+          const hostResponseText = result.status.message.parts[0].text;
+          const hostResponse = JSON.parse(hostResponseText);
+          
+          // Check if there's agentTasks in the host response (new format)
+          if (hostResponse?.agentTasks && typeof hostResponse.agentTasks === 'object') {
+            console.log('[WebhookServer] Found agentTasks in host response:', hostResponse.agentTasks);
+            agentMessages = hostResponse.agentTasks;
+          }
+          // Or check if agentResults contain task information
+          else if (hostResponse?.agentResults && Array.isArray(hostResponse.agentResults)) {
+            console.log('[WebhookServer] Extracting tasks from agentResults');
+            for (const agentResult of hostResponse.agentResults) {
+              if (agentResult.agent && agentResult.task) {
+                agentMessages[agentResult.agent.toLowerCase()] = agentResult.task;
+              }
+            }
+          }
+        } catch (parseErr) {
+          console.log('[WebhookServer] Could not parse host agent response as JSON:', parseErr.message);
+        }
+      }
+      
+      // Fallback: Check if the result has a top-level tasks field (from processWebhookDirectly)
+      if (Object.keys(agentMessages).length === 0 && result?.tasks && typeof result.tasks === 'object') {
+        console.log('[WebhookServer] Using fallback: found tasks object in result:', result.tasks);
         agentMessages = result.tasks;
       } 
-      // Then try to check each agent result from processed webhook
-      else if (result?.results) {
-        console.log('[WebhookServer] Checking agent results for task messages');
+      // Legacy fallback: Then try to check each agent result from processed webhook
+      else if (Object.keys(agentMessages).length === 0 && result?.results) {
+        console.log('[WebhookServer] Using legacy fallback: checking agent results for task messages');
         
         // Handle both array and object formats for results
         if (Array.isArray(result.results)) {
@@ -737,6 +818,8 @@ export class WebhookServer {
           this.stats.recentWebhooks = this.stats.recentWebhooks.slice(0, 50);
         }
       }
+      
+      console.log(`[STATS DEBUG] Final stats after processing:`, this.stats.agentInvocations);
       
       // Save statistics to file
       await this.saveStats();
@@ -799,7 +882,7 @@ export class WebhookServer {
           host: 0,
           github: 0,
           slack: 0,
-          salesforce: 0
+          bench: 0
         },
         recentWebhooks: []
       };
@@ -862,7 +945,7 @@ export class WebhookServer {
   public async start(): Promise<void> {
     try {
       // Load configurations
-      await this.loadConfigurations();
+      await this.loadWebhookConfigurations();
       
       // Check for old stats file and migrate if needed
       await this.migrateOldStatsFile();
@@ -870,14 +953,34 @@ export class WebhookServer {
       // Load statistics
       await this.loadStats();
       
-      // Start the server
-      this.app.listen(this.port, () => {
+      // Start the server and store reference
+      this.server = this.app.listen(this.port, () => {
         console.log(`Webhook server running on port ${this.port}`);
         console.log(`Using webhook stats file: ${statsFilePath}`);
       });
     } catch (err) {
       console.error('Error starting webhook server:', err);
       throw err;
+    }
+  }
+  
+  /**
+   * Stop the webhook server gracefully
+   */
+  public async stop(): Promise<void> {
+    if (this.server) {
+      return new Promise((resolve, reject) => {
+        this.server!.close((err) => {
+          if (err) {
+            console.error('Error stopping webhook server:', err);
+            reject(err);
+          } else {
+            console.log('🛑 Webhook server stopped successfully');
+            this.server = null;
+            resolve();
+          }
+        });
+      });
     }
   }
   
@@ -929,19 +1032,52 @@ export class WebhookServer {
       return false;
     }
     
-    // FIRST: Try to extract agent results from the text payload, as this is most reliable
+    // FIRST: Try to extract agent results from the text payload (new agentResults format)
     if (result.status && result.status.message && 
         result.status.message.parts && result.status.message.parts.length > 0) {
       try {
         const textPart = result.status.message.parts.find((part: any) => part.type === 'text');
         if (textPart && textPart.text) {
-          console.log('[WebhookServer] Checking text payload for Results:', textPart.text.substring(0, 100) + '...');
+          console.log('[WebhookServer] Checking text payload for agentResults:', textPart.text.substring(0, 100) + '...');
           
-          // Extract the JSON between "Results: {" and the end of the JSON object
+          try {
+            // Parse the entire JSON response to look for agentResults array
+            const responseJson = JSON.parse(textPart.text);
+            console.log('[WebhookServer] Parsed response JSON successfully');
+            
+            // Check if agentResults array exists
+            if (responseJson.agentResults && Array.isArray(responseJson.agentResults)) {
+              console.log('[WebhookServer] Found agentResults array with', responseJson.agentResults.length, 'agents');
+              
+              if (responseJson.agentResults.length === 0) {
+                console.log('[WebhookServer] No agent results found in agentResults array');
+                return false;
+              }
+              
+              // Check if ANY agent failed in the agentResults array
+              const failedAgents = responseJson.agentResults.filter((agentResult: any) => 
+                agentResult.state === 'failed' || agentResult.status === 'failed'
+              );
+              
+              if (failedAgents.length > 0) {
+                const failedAgentNames = failedAgents.map((agent: any) => agent.agent).join(', ');
+                console.log(`[WebhookServer] Found ${failedAgents.length} failed agents: ${failedAgentNames} - marking webhook as failed`);
+                return false;
+              }
+              
+              console.log('[WebhookServer] All agents in agentResults array succeeded');
+              return true;
+            }
+          } catch (parseErr) {
+            console.error("[WebhookServer] Error parsing response JSON:", parseErr);
+            // Fall through to legacy checks
+          }
+          
+          // Legacy check: Extract the JSON between "Results: {" and the end of the JSON object
           const resultMatch = textPart.text.match(/Results: (\{.*\})/s);
           if (resultMatch && resultMatch[1]) {
             try {
-              console.log('[WebhookServer] Extracted results JSON from text payload');
+              console.log('[WebhookServer] Extracted results JSON from text payload (legacy format)');
               const agentResults = JSON.parse(resultMatch[1]);
               const agentNames = Object.keys(agentResults);
               
@@ -1043,5 +1179,17 @@ export class WebhookServer {
     // If we're still here, the webhook is considered successful
     console.log('[WebhookServer] No failure indicators found - marking as successful');
     return true;
+  }
+
+  private updateAgentInvocationStats(agentType: string): void {
+    if (agentType === 'github') {
+      this.stats.agentInvocations.github++;
+    } else if (agentType === 'slack') {
+      this.stats.agentInvocations.slack++;
+    } else if (agentType === 'bench') {
+      this.stats.agentInvocations.bench++;
+    } else if (agentType === 'host') {
+      this.stats.agentInvocations.host++;
+    }
   }
 } 

@@ -41,7 +41,7 @@ function generateTaskId(): string {
 
 // --- State ---
 let currentTaskId: string = generateTaskId();
-const serverUrl = process.argv[2] || "http://localhost:41241";
+const serverUrl = process.argv[2] || "http://localhost:41240";
 const client = new A2AClient(serverUrl);
 let agentName = "Agent"; // Default, try to get from agent card later
 

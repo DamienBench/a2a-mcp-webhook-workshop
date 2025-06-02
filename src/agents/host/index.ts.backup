@@ -254,6 +254,9 @@ async function processRequest(sessionId: string, text: string) {
   
   debug("Calling hostAgentPrompt");
   
+  // Initialize tasks collection for extracting skipped tasks
+  const tasks: Record<string, string> = {};
+  
   try {
     // Call the Host Agent prompt with the user text
     const response = await hostAgentPrompt(
@@ -301,9 +304,10 @@ async function processRequest(sessionId: string, text: string) {
               const output = item.toolResponse.output as any;
               console.log(`[HostAgent] Tool response output:`, output);
               
-              // Store the last send_task result
-              if (toolResults.length > 0 && toolResults[toolResults.length - 1].toolName === 'send_task') {
-                toolResults[toolResults.length - 1].output = output;
+              // Check if this is a skipped send_task with the task info
+              if (output && typeof output === 'object' && output.skippedDuringAnalysis && output.agent && output.message) {
+                tasks[output.agent.toLowerCase()] = output.message;
+                console.log(`[HostAgent] Extracted skipped task for ${output.agent}: "${output.message}"`);
               }
             }
           }
@@ -387,9 +391,11 @@ async function* hostAgent({
       if (parsedData.type === 'webhook') {
         isWebhook = true;
         console.log('[HostAgent] Detected webhook request');
+        console.log('[HostAgent] About to call processWebhookDirectly');
         
         // Process the webhook directly
         const webhookResult = await processWebhookDirectly(parsedData);
+        console.log('[HostAgent] processWebhookDirectly returned:', JSON.stringify(webhookResult, null, 2));
         
         // Create a response with the webhook results
         let responseObj;
@@ -445,6 +451,7 @@ async function* hostAgent({
         }
         
         // Return the final result
+        console.log('[HostAgent] Final response object:', JSON.stringify(responseObj, null, 2));
         yield {
           state: "completed",
           message: {
@@ -1075,31 +1082,31 @@ Use send_task for each agent with appropriate messages.`;
     let listAgentsCalled = false;
     
     // Process response and extract tool calls
-    console.log(`[HostAgent] ========== STEP 6: EXTRACTING TOOL CALLS ==========`);
+    console.log('[HostAgent] ========== STEP 6: EXTRACTING TOOL CALLS ==========');
     
     // If the response has tool calls, process them
     if (response.request?.messages) {
-      console.log(`[HostAgent] Found ${response.request.messages.length} messages in response`);
+      console.log('[HostAgent] Found ' + response.request.messages.length + ' messages in response');
       for (let i = 0; i < response.request.messages.length; i++) {
         const msg = response.request.messages[i];
-        console.log(`[HostAgent] Message ${i}: role=${msg.role}, content length=${(msg.content || []).length}`);
+        console.log('[HostAgent] Message ' + i + ': role=' + msg.role + ', content length=' + (msg.content || []).length);
         
         // Check if list_remote_agents was called
         if (msg.role === 'model') {
           for (let j = 0; j < (msg.content || []).length; j++) {
             const contentItem = msg.content[j];
-            console.log(`[HostAgent] Content item ${j}:`, Object.keys(contentItem));
+            console.log('[HostAgent] Content item ' + j + ':', Object.keys(contentItem));
             
             if (contentItem.toolRequest && contentItem.toolRequest.name === 'list_remote_agents') {
               listAgentsCalled = true;
-              console.log(`[HostAgent] LLM called list_remote_agents`);
+              console.log('[HostAgent] LLM called list_remote_agents');
             }
             
             if (contentItem.toolRequest && contentItem.toolRequest.name === 'send_task') {
               const input = contentItem.toolRequest.input as { agent_name: string; message: string };
               if (input && input.agent_name && input.message) {
                 tasks[input.agent_name.toLowerCase()] = input.message;
-                console.log(`[HostAgent] Generated task for ${input.agent_name}: "${input.message}"`);
+                console.log('[HostAgent] Generated task for ' + input.agent_name + ': "' + input.message + '"');
               }
             }
           }
@@ -1109,16 +1116,16 @@ Use send_task for each agent with appropriate messages.`;
         if (msg.role === 'tool') {
           for (let j = 0; j < (msg.content || []).length; j++) {
             const contentItem = msg.content[j];
-            console.log(`[HostAgent] Tool response ${j}:`, Object.keys(contentItem));
+            console.log('[HostAgent] Tool response ' + j + ':', Object.keys(contentItem));
             
             if (contentItem.toolResponse && contentItem.toolResponse.output) {
               const output = contentItem.toolResponse.output as any;
-              console.log(`[HostAgent] Tool response output:`, output);
+              console.log('[HostAgent] Tool response output:', output);
               
               // Check if this is a skipped send_task with the task info
               if (output && typeof output === 'object' && output.skippedDuringAnalysis && output.agent && output.message) {
                 tasks[output.agent.toLowerCase()] = output.message;
-                console.log(`[HostAgent] Extracted skipped task for ${output.agent}: "${output.message}"`);
+                console.log('[HostAgent] Extracted skipped task for ' + output.agent + ': "' + output.message + '"');
               }
             }
           }
@@ -1128,15 +1135,15 @@ Use send_task for each agent with appropriate messages.`;
     
     // If list_remote_agents wasn't called, log a warning
     if (!listAgentsCalled) {
-      console.warn(`[HostAgent] WARNING: LLM did not call list_remote_agents during webhook analysis`);
+      console.warn('[HostAgent] WARNING: LLM did not call list_remote_agents during webhook analysis');
     }
     
-    console.log(`[HostAgent] Tasks generated via tools: ${Object.keys(tasks).join(', ') || 'none'}`);
+    console.log('[HostAgent] Tasks generated via tools: ' + (Object.keys(tasks).join(', ') || 'none'));
     
     // Check for JSON content in the response and try to extract tasks from it
     if (response.text && typeof response.text === 'string') {
       const text = response.text;
-      console.log(`[HostAgent] Checking response text for JSON content`);
+      console.log('[HostAgent] Checking response text for JSON content');
       
       // Try to extract JSON from the text
       try {
@@ -1146,7 +1153,7 @@ Use send_task for each agent with appropriate messages.`;
         for (const jsonMatch of jsonMatches) {
           try {
             const jsonData = JSON.parse(jsonMatch);
-            console.log(`[HostAgent] Parsed JSON data:`, JSON.stringify(jsonData));
+            console.log('[HostAgent] Parsed JSON data:', JSON.stringify(jsonData));
             
             // Check if this JSON contains task assignments
             if (jsonData && typeof jsonData === 'object') {
@@ -1156,7 +1163,7 @@ Use send_task for each agent with appropriate messages.`;
                   const agentName = key.toLowerCase();
                   if (['slack', 'github', 'bench'].includes(agentName)) {
                     tasks[agentName] = value;
-                    console.log(`[HostAgent] Extracted task from JSON for ${agentName}: "${value}"`);
+                    console.log('[HostAgent] Extracted task from JSON for ' + agentName + ': "' + value + '"');
                   }
                 }
               }
@@ -1170,10 +1177,10 @@ Use send_task for each agent with appropriate messages.`;
       }
     }
     
-    console.log(`[HostAgent] ========== STEP 8: FINAL RESULTS ==========`);
-    console.log(`[HostAgent] Final tasks extracted: ${Object.keys(tasks).join(', ') || 'none'}`);
+    console.log('[HostAgent] ========== STEP 8: FINAL RESULTS ==========');
+    console.log('[HostAgent] Final tasks extracted: ' + (Object.keys(tasks).join(', ') || 'none'));
     for (const [agent, task] of Object.entries(tasks)) {
-      console.log(`[HostAgent] ${agent}: "${task}"`);
+      console.log('[HostAgent] ' + agent + ': "' + task + '"');
     }
     
     if (Object.keys(tasks).length === 0) {
@@ -1295,4 +1302,4 @@ async function main() {
 }
 
 // Run the main function
-main().catch(console.error); 
+main().catch(console.error);

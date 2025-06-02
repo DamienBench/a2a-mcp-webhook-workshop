@@ -1,6 +1,6 @@
 # Host A2A Agent
 
-This is the main Host Agent that routes user requests to the appropriate specialized agents (Slack, GitHub, Salesforce).
+This is the main Host Agent that routes user requests to the appropriate specialized agents (Slack, GitHub, Bench).
 
 ## Setup
 
@@ -26,7 +26,7 @@ npm run a2a:cli
 Example prompts:
 - "Send a message to #general in Slack saying Hello world"
 - "Create a GitHub issue in owner/repo with title 'Bug Report' and description 'Please fix this'"
-- "Create a new Contact in Salesforce with FirstName 'John' and LastName 'Smith'"
+- "Provide technical assistance for the project"
 
 ## Starting All Agents
 

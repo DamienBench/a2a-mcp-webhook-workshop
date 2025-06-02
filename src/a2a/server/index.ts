@@ -49,11 +49,11 @@ async function* mySimpleHandler(context: TaskContext): AsyncGenerator<TaskYieldU
 const server = new A2AServer(mySimpleHandler);
 server.start();
 
-console.log("Example server started on port 41241");
+console.log("Example server started on port 41240");
 
 // To test (using curl or similar):
 // 1. Send a task:
-// curl -X POST http://localhost:41241 -H "Content-Type: application/json" -d \
+// curl -X POST http://localhost:41240 -H "Content-Type: application/json" -d \
 // '{
 //   "jsonrpc": "2.0",
 //   "method": "tasks/send",
@@ -68,7 +68,7 @@ console.log("Example server started on port 41241");
 // }'
 //
 // 2. Send and subscribe:
-// curl -N -X POST http://localhost:41241 -H "Content-Type: application/json" -d \
+// curl -N -X POST http://localhost:41240 -H "Content-Type: application/json" -d \
 // '{
 //   "jsonrpc": "2.0",
 //   "method": "tasks/sendSubscribe",

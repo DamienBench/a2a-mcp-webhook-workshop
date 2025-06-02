@@ -338,34 +338,13 @@ textarea, input, select {
 
 /* Pulse animation for active status */
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(102, 187, 106, 0.7); }
-  70% { box-shadow: 0 0 0 5px rgba(102, 187, 106, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(102, 187, 106, 0); }
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 .pulse {
   animation: pulse 2s infinite;
-}
-
-/* Matrix rain effect for terminal */
-.matrix-rain {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  opacity: 0.05;
-  overflow: hidden;
-  z-index: 0;
-}
-
-.matrix-rain canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100% !important;
-  height: 100% !important;
 }
 
 /* Terminal container structure */
@@ -646,11 +625,6 @@ textarea, input, select {
   border-left: 3px solid var(--success);
 }
 
-/* Matrix and Terminal Colors */
-.matrix-rain {
-  opacity: 0.05;
-}
-
 /* Badge and Status Colors */
 .badge.bg-success {
   background-color: var(--success-dark) !important;
@@ -850,12 +824,12 @@ textarea, input, select {
 }
 
 #webhookDetailsModal .agent-details strong {
-  color: var(--primary-light);
+  color: var(--text-color);
 }
 
 /* Webhook data accordion styling */
 #webhookDataAccordion {
-  margin-top: 1.5rem;
+  margin-top: 20px;
   border-top: 1px solid var(--border-color);
   padding-top: 1.5rem;
 }
@@ -889,4 +863,25 @@ textarea, input, select {
   border: none;
   margin: 0;
   max-height: 400px;
+}
+
+/* Agent message text formatting */
+.agent-message p {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.5;
+}
+
+.agent-message strong {
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.agent-message em {
+  font-style: italic;
+  color: #e0e0e0;
+}
+
+.agent-message br {
+  line-height: 1.8;
 } 

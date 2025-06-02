@@ -20,7 +20,7 @@ This file defines the `A2AClient` class, which provides methods for interacting 
 import { A2AClient, Task, TaskQueryParams, TaskSendParams } from "./client"; // Import necessary types
 import { v4 as uuidv4 } from "uuid"; // Example for generating task IDs
 
-const client = new A2AClient("http://localhost:41241"); // Replace with your server URL
+const client = new A2AClient("http://localhost:41240"); // Replace with your server URL
 
 async function run() {
   try {
@@ -58,7 +58,7 @@ import {
 } from "./client"; // Adjust path if necessary
 import { v4 as uuidv4 } from "uuid";
 
-const client = new A2AClient("http://localhost:41241");
+const client = new A2AClient("http://localhost:41240");
 
 async function streamTask() {
   const streamingTaskId = uuidv4();

@@ -2,6 +2,16 @@
 
 This project demonstrates how to build a multi-agent system using Agent-to-Agent (A2A) communication with the Model Context Protocol (MCP).
 
+## Features
+
+This workshop demonstrates a multi-agent system with:
+
+- **Host Agent**: Orchestrates requests between specialized agents
+- **Slack Agent**: Send messages to Slack channels
+- **GitHub Agent**: Create issues, PRs, and manage repositories
+- **Bench Agent**: Provides technical assistance and project insights
+- **Webhook Server**: HTTP server that processes incoming webhooks and delegates to appropriate agents
+
 ## Overview
 
 The repository contains:
@@ -10,9 +20,9 @@ The repository contains:
 2. Three specialized agents:
    - **Slack Agent**: Send messages to Slack channels
    - **GitHub Agent**: Create issues in GitHub repositories
-   - **Salesforce Agent**: Create, find, and update Salesforce records
+   - **Bench Agent**: Provides technical assistance and project insights
 
-Each agent connects to its respective service via the Zapier MCP Server, allowing seamless integration without direct API access.
+Each agent connects to its respective service via the appropriate protocol, allowing seamless integration.
 
 ## Architecture
 
@@ -26,9 +36,8 @@ Each agent connects to its respective service via the Zapier MCP Server, allowin
 │  CLI        │     │ (Port 41245)  │
 │  Interface  │     └───────────────┘
 │             │     ┌───────────────┐
-│             ├────►│ Salesforce    │──► Salesforce
-└─────────────┘     │ Agent         │    Records
-                    │ (Port 41244)  │
+│             ├────►│ Bench Agent   │──► Bench API
+└─────────────┘     │ (Port 41246)  │
                     └───────────────┘
 ```
 
@@ -40,19 +49,18 @@ graph TD
     CLI -->|Tasks| Host[Host Agent]
     Host -->|Delegates| SlackAgent[Slack Agent]
     Host -->|Delegates| GitHubAgent[GitHub Agent]
-    Host -->|Delegates| SalesforceAgent[Salesforce Agent]
+    Host -->|Delegates| BenchAgent[Bench Agent]
     
     SlackAgent -->|MCP| Zapier[Zapier MCP Server]
     GitHubAgent -->|MCP| Zapier
-    SalesforceAgent -->|MCP| Zapier
+    BenchAgent -->|API| BenchAPI[Bench API]
     
     Zapier -->|API| SlackAPI[Slack API]
     Zapier -->|API| GitHubAPI[GitHub API]
-    Zapier -->|API| SalesforceAPI[Salesforce API]
     
-    class Host,SlackAgent,GitHubAgent,SalesforceAgent agent;
+    class Host,SlackAgent,GitHubAgent,BenchAgent agent;
     class Zapier middleware;
-    class SlackAPI,GitHubAPI,SalesforceAPI external;
+    class SlackAPI,GitHubAPI,BenchAPI external;
     
     classDef agent fill:#d070d0,stroke:#333,stroke-width:2px,color:#fff;
     classDef middleware fill:#7070d0,stroke:#333,stroke-width:2px,color:#fff;
@@ -99,13 +107,11 @@ graph LR
     subgraph "External Services"
         Slack[Slack]
         GitHub[GitHub]
-        Salesforce[Salesforce]
         Database[Databases]
     end
     
     MCP --> Slack
     MCP --> GitHub
-    MCP --> Salesforce
     MCP --> Database
     
     class AI,MCP connector;
@@ -146,7 +152,7 @@ This starts:
 - Host Agent on port 41240
 - Slack Agent on port 41243
 - GitHub Agent on port 41245
-- Salesforce Agent on port 41244
+- Bench Agent on port 41246
 
 All agents run in the background, with logs stored in the `logs/` directory.
 
@@ -163,7 +169,7 @@ The Host Agent intelligently routes your requests to the appropriate specialized
 Example prompts:
 - **Slack**: "Send a message to the #general channel saying Hello world"
 - **GitHub**: "Create a GitHub issue in myrepo with title 'Bug Report'"
-- **Salesforce**: "Create a new Contact in Salesforce with name John Smith"
+- **Bench**: "Provide technical assistance for the project"
 - **Multiple Services**: "Send hi to Slack and create a GitHub issue about the message"
 
 ### Stop All Agents
@@ -188,8 +194,8 @@ npm run agent:slack "Send a message to #general saying Hello"
 # Run GitHub agent with direct message
 npm run agent:github "Create an issue in repo/name with title 'Test'"
 
-# Run Salesforce agent with direct message
-npm run agent:salesforce "Create a Contact with FirstName John LastName Doe"
+# Run Bench agent with direct message
+npm run agent:bench "Provide technical assistance for the project"
 ```
 
 ## Testing
@@ -199,7 +205,7 @@ Individual agent tests:
 ```bash
 npm run test:slack
 npm run test:github
-npm run test:salesforce
+npm run test:bench
 ```
 
 Test the Host Agent with all sub-agents:
@@ -268,5 +274,5 @@ Each component has its own detailed documentation:
 - [Host Agent](src/agents/host/README.md)
 - [Slack Agent](src/agents/slack/README.md)
 - [GitHub Agent](src/agents/github/README.md)
-- [Salesforce Agent](src/agents/salesforce/README.md)
+- [Bench Agent](src/agents/bench/README.md)
 - [Webhook Handler & Web UI](src/webhooks/README.md)

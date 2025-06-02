@@ -15,14 +15,19 @@ if (!process.env.GEMINI_API_KEY) {
   process.exit(1);
 }
 
-// Initialize the Genkit AI client
+// Initialize the Genkit AI client with enhanced configuration for complex transcripts
 export const ai = genkit({
   plugins: [
     googleAI({
       apiKey: process.env.GEMINI_API_KEY,
     }),
   ],
-  model: googleAI.model("gemini-2.0-flash"),
+  model: googleAI.model("gemini-2.0-flash", {
+    maxOutputTokens: 8192,  // Increased for complex outputs
+    temperature: 0.1,      // Lower temperature for more consistent task generation
+    topP: 0.8,            // Balanced creativity and focus
+    topK: 40              // Reasonable diversity
+  }),
   promptDir: dirname(fileURLToPath(import.meta.url)),
 });
 
@@ -30,7 +35,7 @@ export const ai = genkit({
 export const hostAgentPrompt = ai.prompt("host_agent");
 
 // Cache for agent capabilities and examples (populated at runtime)
-const agentCache = new Map<string, {
+export const agentCache = new Map<string, {
   description: string;
   examples: string[];
   agentCard?: any;
@@ -41,7 +46,6 @@ const agentCache = new Map<string, {
  */
 async function fetchAgentInfo(agentUrl: string): Promise<{ description: string; examples: string[]; agentCard: any }> {
   try {
-    console.log(`[HostAgent] Fetching agent info from ${agentUrl}`);
     const client = new A2AClient(agentUrl);
     const agentCard = await client.agentCard();
     
@@ -58,12 +62,9 @@ async function fetchAgentInfo(agentUrl: string): Promise<{ description: string; 
       }
     }
     
-    console.log(`[HostAgent] Retrieved agent info: ${description.substring(0, 50)}...`);
-    console.log(`[HostAgent] Retrieved ${examples.length} examples`);
-    
     return { description, examples, agentCard };
   } catch (error) {
-    console.error(`[HostAgent] Error fetching agent info: ${error}`);
+    console.error(`[HostAgent] Error fetching agent info from ${agentUrl}:`, error);
     return { 
       description: `Agent at ${agentUrl}`,
       examples: [],
@@ -123,7 +124,7 @@ export const sendTask = ai.defineTool(
     
     // Check if we're in webhook analysis mode (set externally)
     if (global.isWebhookContentAnalysis) {
-      console.log(`[DUPLICATION DEBUG] Skipping task sending during content analysis for ${agent_name}. This task will be sent later during parallel execution.`);
+      console.log(`[HostAgent] Skipping task sending during content analysis for ${agent_name}. This task will be sent later during parallel execution.`);
       return {
         success: true,
         agent: agent_name,
@@ -158,12 +159,22 @@ export const sendTask = ai.defineTool(
       
       console.log(`[HostAgent] Got response from ${agent_name}:`, JSON.stringify(response, null, 2));
       
-      // Format the response for the LLM
+      // Get the actual response message from the agent
+      let formattedResponse = "";
       if (response && response.status && response.status.message) {
         const respMessage = response.status.message;
         if (respMessage.parts && respMessage.parts.length > 0 && 'text' in respMessage.parts[0]) {
-          const originalText = respMessage.parts[0].text;
-          respMessage.parts[0].text = `[${agent_name}] ${originalText}`;
+          const originalText = respMessage.parts[0].text || "";
+          // Clean up empty responses
+          if (originalText.trim()) {
+            // Prefix with agent name if it doesn't already have it
+            formattedResponse = originalText.startsWith(`${agent_name}:`) ? 
+              originalText : 
+              `${agent_name} Agent: ${originalText}`;
+            
+            // Update the response message text
+            respMessage.parts[0].text = formattedResponse;
+          }
         }
       }
       
@@ -172,6 +183,7 @@ export const sendTask = ai.defineTool(
         agent: agent_name,
         message,
         response,
+        formattedResponse,
         state: response?.status?.state || "unknown"
       };
     } catch (error) {
@@ -194,7 +206,6 @@ export async function registerAgent(agentType: string, agentUrl: string): Promis
   try {
     const agentInfo = await fetchAgentInfo(agentUrl);
     agentCache.set(agentType, agentInfo);
-    console.log(`[HostAgent] Registered agent '${agentType}' with ${agentInfo.examples.length} examples`);
   } catch (error) {
     console.error(`[HostAgent] Error registering agent '${agentType}':`, error);
     // Add a minimal entry even on error

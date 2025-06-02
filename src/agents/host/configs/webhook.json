@@ -1,10 +1,9 @@
 {
   "id": "meeting-transcript",
-  "name": "Meeting Transcript Processor",
-  "description": "Processes meeting transcripts and extracts tasks for different agents",
+  "name": "Webhook Configuration for Multi-Agent Workflow",
+  "description": "Processes incoming webhook data using specialized agents for GitHub, Slack, and Bench operations",
   "processor": "meeting-transcript",
   "processorConfig": {
-    "parallel": true,
     "agents": [
       {
         "id": "github",
@@ -17,11 +16,12 @@
         "url": "http://localhost:41243"
       },
       {
-        "id": "salesforce",
-        "type": "salesforce",
-        "url": "http://localhost:41244"
+        "id": "bench",
+        "type": "bench",
+        "url": "http://localhost:41246"
       }
     ],
-    "promptTemplate": "You are processing content from a webhook. Your task is to analyze this content and identify specific actions to delegate to the available specialized agents.\n\nHere's what each agent can do:\n{{agentCapabilities}}\n\nAnalyze this content carefully and identify exactly one task for each agent. Do not create multiple tasks for the same agent.\n\nContent:\n---\n{{content}}\n---\n\nFor each agent, provide a single, specific instruction based on the content."
-  }
+    "parallel": true
+  },
+  "promptTemplate": "You are orchestrating a multi-agent workflow based on webhook input. The available agents are:\n\n{{agentCapabilities}}\n\nAnalyze this webhook data and determine what tasks should be performed by which agents:\n\n{{content}}\n\nFor each applicable agent, provide a specific task that:\n1. Is clearly actionable and detailed\n2. Includes all necessary context from the webhook data\n3. Follows the agent's expected format and capabilities\n4. When creating issues or content, provide descriptive titles and comprehensive details\n5. For Slack messages, be conversational and informative\n6. For GitHub operations, include proper formatting and context\n7. Good example (GitHub): \"Create an issue titled 'Follow-up Required: Technical Discussion with {{company}}' with detailed description about requirements, technical preferences, and next steps based on the meeting.\"\n8. Good example (Slack): \"Send message to #sales channel: 'Update on {{company}} meeting - {{summary}} - Follow-up scheduled with technical team.'\"\n9. Good example (Bench): \"Research the following entities from a meeting transcript: Companies: TechCorp (fast-growing startup, 200 employees, looking for AI automation). People: Robert Chen (CEO), Sarah Williams (CTO). Provide a brief summary including: company background, key personnel roles and background, industry context, and any relevant business intelligence that would be useful for follow-up conversations.\"\n\nRespond with specific tasks for relevant agents only - not all agents need to be used for every webhook.\n\nIMPORTANT: When analyzing meeting transcripts or discussions:\n- Extract key business information (company names, requirements, pain points)\n- Identify action items and follow-up needs\n- Create meaningful content that captures the business context\n- For technical discussions, preserve technical requirements and preferences\n- For Bench agent: Extract and provide ONLY the company names with basic context and people names with their roles/titles. DO NOT include the full transcript - just the key entities to research\n- Bench agent should focus on background research, company intelligence, and providing context for follow-up activities"
 } 

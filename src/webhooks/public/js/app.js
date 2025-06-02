@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const WEBHOOK_API_URL = '/api/webhooks';
   const TEST_WEBHOOK_API_URL = '/api/test/webhook';
   const STATS_API_URL = '/api/stats';
+  const LOG_API_URL = '/api/logs';
+  const HOST_AGENT_URL = 'http://localhost:41240';
+  const HOST_AGENT_API_URL = 'http://localhost:41241'; // API server port
+  const HOST_AGENT_RELOAD_URL = `${HOST_AGENT_API_URL}/api/reload-config`;
   let currentWebhooks = [];
   let webhookStats = {
     totalProcessed: 0,
@@ -10,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
       host: 0,
       github: 0,
       slack: 0,
-      salesforce: 0
+      bench: 0
     },
     recentWebhooks: []
   };
@@ -42,51 +46,52 @@ document.addEventListener('DOMContentLoaded', function() {
   // Navigation links
   const navLinks = document.querySelectorAll('.nav-link');
   
-  // Agent URLs
+  // Agent URLs for terminal connections
   const agentUrls = {
     host: "http://localhost:41240",
     slack: "http://localhost:41243",
     github: "http://localhost:41245",
-    salesforce: "http://localhost:41244",
-    webhook: "http://localhost:3000"
+    bench: "http://localhost:41246"
   };
   
   // Default webhook test payload
+  // Fake transcript for testing
   const defaultPayload = {
-    transcript: `Meeting Transcript: Sales Discovery Call with Acme Corp - ${new Date().toLocaleDateString()}
+    transcript: `Meeting Transcript: Sales Discovery Call with Snowflake - ${new Date().toLocaleDateString()}
 
 Participants:
-- Sarah Johnson (Account Executive, Our Company)
-- John Smith (CTO, Acme Corp)
-- Emma Davis (Head of Engineering, Acme Corp)
+- Sarah Johnson (Account Executive, Bench)
+- Subramanian Muralidhar (CTO, Snowflake) [1]
+- Vivek Raghunathan (SVP of Engineering, Snowflake) [2]
 
 Sarah: Thank you for joining the call today. We're excited to discuss how our AI platform could help with your automation needs.
 
-John: Thanks for setting this up. We've been looking for a solution to automate our development workflows.
+Subramanian Muralidhar: Thanks for setting this up. We've been looking for a solution to automate our development workflows.
 
-Emma: Yes, particularly around code reviews and bug triage. Our team is spending too much time on these tasks.
+Vivek Raghunathan: Yes, particularly around code reviews and bug triage. Our team is spending too much time on these tasks.
 
 Sarah: I understand. Our platform has specific features for development workflows. Let me show you how it works.
 
-John: That looks promising. One question - we found a bug in our trial where the AI sometimes misclassifies the severity of bugs.
+Subramanian Muralidhar: That looks promising. One question - we found a bug in our trial where the AI sometimes misclassifies the severity of bugs.
 
 Sarah: I'll make a note of that and have our engineers look into it. I'll create a bug report for this issue.
 
-Emma: Also, we'd like to integrate this with our Slack channels for team notifications. Is that possible?
+Vivek Raghunathan: Also, we'd like to integrate this with our Slack channels for team notifications. Is that possible?
 
 Sarah: Absolutely! We have robust Slack integration capabilities. I'll share more details about that.
 
-John: Great. We're also using Salesforce for tracking our customer interactions. Can your system update Salesforce with actions taken?
+Subramanian Muralidhar: Great. We're also using GitHub for tracking our development workflow. Can your system integrate with GitHub for issue management?
 
-Sarah: Yes, we offer Salesforce integration as well. I'll send you documentation on that.
+Sarah: Yes, we offer GitHub integration as well. I'll send you documentation on that.
 
-Emma: This sounds like it could work for us. What would the next steps be?
+Vivek Raghunathan: This sounds like it could work for us. What would the next steps be?
 
 Sarah: I'll send a proposal with pricing and implementation details by tomorrow. Should I include anyone else?
 
-John: Please add our VP of Engineering to the proposal. I'll share their contact details after the call.
+Subramanian Muralidhar: Please add our VP of Engineering to the proposal. I'll share their contact details after the call.
 
-Sarah: Perfect! Thank you for your time today. I look forward to working with Acme Corp.`
+Sarah: Perfect! Thank you for your time today. I look forward to working with Snowflake.
+`
   };
   
   // Initialize the application
@@ -254,8 +259,8 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
                     <div class="col-md-3 text-center mb-3">
                       <div class="card bg-dark">
                         <div class="card-body p-2">
-                          <h3 class="text-light" id="salesforce-agent-count">${webhookStats.agentInvocations.salesforce}</h3>
-                          <p class="mb-0">SALESFORCE AGENT</p>
+                          <h3 class="text-light" id="bench-agent-count">${webhookStats.agentInvocations.bench}</h3>
+                          <p class="mb-0">BENCH AGENT</p>
                         </div>
                       </div>
                     </div>
@@ -380,7 +385,7 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
     document.getElementById('host-agent-count').textContent = webhookStats.agentInvocations.host;
     document.getElementById('github-agent-count').textContent = webhookStats.agentInvocations.github;
     document.getElementById('slack-agent-count').textContent = webhookStats.agentInvocations.slack;
-    document.getElementById('salesforce-agent-count').textContent = webhookStats.agentInvocations.salesforce;
+    document.getElementById('bench-agent-count').textContent = webhookStats.agentInvocations.bench;
     
     // Update webhook table
     const recentWebhooksTable = document.getElementById('recent-webhooks-table');
@@ -409,8 +414,10 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
         statusClass = 'info';
         statusText = 'PROCESSING';
       } else {
-        statusClass = webhook.status === 'success' ? 'success' : 'danger';
-        statusText = webhook.status === 'success' ? 'SUCCESS' : 'FAILED';
+        // Re-evaluate the status based on actual agent results for accuracy
+        const actualStatus = determineActualWebhookStatus(webhook);
+        statusClass = actualStatus === 'success' ? 'success' : 'danger';
+        statusText = actualStatus === 'success' ? 'SUCCESS' : 'FAILED';
       }
       
       return `
@@ -422,6 +429,110 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
         </tr>
       `;
     }).join('');
+  }
+  
+  // Re-evaluate webhook status based on actual agent results
+  function determineActualWebhookStatus(webhook) {
+    // If webhook is still processing, return processing
+    if (webhook.status === 'processing') {
+      return 'processing';
+    }
+    
+    // If there's no result data, fall back to stored status
+    if (!webhook.details || !webhook.details.result) {
+      return webhook.status;
+    }
+    
+    const result = webhook.details.result;
+    
+    try {
+      // FIRST: Check for agentResults in the new JSON format
+      if (result.status && result.status.message && 
+          result.status.message.parts && result.status.message.parts.length > 0) {
+        
+        const textPart = result.status.message.parts.find(part => part.type === 'text');
+        if (textPart && textPart.text) {
+          try {
+            // Parse the entire JSON response to look for agentResults array
+            const responseJson = JSON.parse(textPart.text);
+            
+            // Check if agentResults array exists
+            if (responseJson.agentResults && Array.isArray(responseJson.agentResults)) {
+              if (responseJson.agentResults.length === 0) {
+                return 'failed'; // No agent results = failure
+              }
+              
+              // Check if ANY agent failed in the agentResults array
+              const failedAgents = responseJson.agentResults.filter(agentResult => 
+                agentResult.state === 'failed' || agentResult.status === 'failed'
+              );
+              
+              if (failedAgents.length > 0) {
+                return 'failed'; // At least one agent failed
+              }
+              
+              return 'success'; // All agents succeeded
+            }
+          } catch (parseErr) {
+            // Fall through to legacy checks
+          }
+        }
+      }
+      
+      // SECOND: Check direct results object format
+      if (result.results && typeof result.results === 'object' && !Array.isArray(result.results)) {
+        // Check if ANY agent has an error or failed state
+        const anyAgentFailed = Object.entries(result.results).some(([agentName, agentResult]) => {
+          // Check for error field
+          if (agentResult.error) {
+            return true;
+          }
+          
+          // Check for failed state
+          if (agentResult.status && agentResult.status.state === 'failed') {
+            return true;
+          }
+          
+          return false;
+        });
+        
+        if (anyAgentFailed) {
+          return 'failed';
+        }
+      }
+      
+      // THIRD: Check for array-type results
+      if (result.results && Array.isArray(result.results)) {
+        if (result.results.length === 0) {
+          return 'failed'; // No results at all
+        }
+        
+        // Check for any failed items in the array
+        const anyArrayItemFailed = result.results.some((agentResult) => {
+          return agentResult.error || (agentResult.status && agentResult.status.state === 'failed');
+        });
+        
+        if (anyArrayItemFailed) {
+          return 'failed';
+        }
+      }
+      
+      // FOURTH: Check status state directly in result
+      if (result.status && result.status.state === 'failed') {
+        return 'failed';
+      }
+      
+      // FIFTH: Check for obvious error indicators
+      if (result.error || result.mockResponse) {
+        return 'failed';
+      }
+      
+    } catch (err) {
+      console.error('Error determining actual webhook status:', err);
+    }
+    
+    // If we can't determine failure, fall back to stored status or assume success
+    return webhook.status || 'success';
   }
   
   // Add click event listeners to webhook table rows
@@ -464,8 +575,62 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
           console.log("Found agentMessages:", agentMessages);
         }
 
-        // First check direct results array
-        if (webhookData.details.result && webhookData.details.result.results) {
+        // Check for agentResults in the text response (our new format)
+        if (webhookData.details.result && 
+            webhookData.details.result.status && 
+            webhookData.details.result.status.message && 
+            webhookData.details.result.status.message.parts) {
+          
+          // Locate the text part that contains the JSON response
+          const textPart = webhookData.details.result.status.message.parts.find(part => part.type === 'text');
+          if (textPart && textPart.text) {
+            try {
+              // Parse the entire JSON response
+              const responseJson = JSON.parse(textPart.text);
+              console.log("Parsed response JSON:", responseJson);
+              
+              // Check if agentResults array exists
+              if (responseJson.agentResults && Array.isArray(responseJson.agentResults)) {
+                agentResults = {};
+                
+                // Convert array format to object format for easier processing
+                responseJson.agentResults.forEach(agentResult => {
+                  const agentName = agentResult.agent;
+                  agentResults[agentName] = {
+                    id: `${agentName}-${webhookData.id}`,
+                    status: {
+                      state: agentResult.state || 'completed',
+                      message: {
+                        parts: [{
+                          type: 'text',
+                          text: agentResult.response || 'No response'
+                        }]
+                      },
+                      timestamp: webhookData.timestamp
+                    },
+                    artifacts: []
+                  };
+                });
+                
+                console.log("Converted agentResults:", agentResults);
+                
+                // Determine if any agents failed
+                failedAgents = responseJson.agentResults
+                  .filter(result => result.state === 'failed')
+                  .map(result => result.agent);
+                  
+                hasFailedAgents = failedAgents.length > 0;
+              }
+            } catch (parseError) {
+              console.error("Error parsing response JSON:", parseError);
+              console.log("Response text that failed to parse:", textPart.text);
+            }
+          }
+        }
+
+        // Fallback: First check direct results array
+        if (!agentResults && webhookData.details.result && 
+            webhookData.details.result.results) {
           const results = webhookData.details.result.results;
           failedAgents = results
             .filter(result => result.status === 'failed')
@@ -474,8 +639,8 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
           hasFailedAgents = failedAgents.length > 0;
         }
         
-        // Then check nested results in text payload
-        if (webhookData.details.result && 
+        // Legacy fallback: check nested results in text payload
+        if (!agentResults && webhookData.details.result && 
             webhookData.details.result.status && 
             webhookData.details.result.status.message && 
             webhookData.details.result.status.message.parts) {
@@ -588,14 +753,14 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
                 sentTaskMessage = `
                   <div class="mt-3 mb-3 p-3 border border-info bg-dark">
                     <h6 class="text-info"><i class="fas fa-paper-plane me-2"></i>Host Agent Message:</h6>
-                    <p class="mb-0 text-light">${agentMessages[agentType]}</p>
+                    <p class="mb-0 text-light">${convertUrlsToLinks(agentMessages[agentType])}</p>
                   </div>
                 `;
               } else if (agentData.task && agentData.task.message && agentData.task.message.parts && agentData.task.message.parts[0]) {
                 sentTaskMessage = `
                   <div class="mt-3 mb-3 p-3 border border-info bg-dark">
                     <h6 class="text-info"><i class="fas fa-paper-plane me-2"></i>Host Agent Message:</h6>
-                    <p class="mb-0 text-light">${agentData.task.message.parts[0].text || 'No message content'}</p>
+                    <p class="mb-0 text-light">${convertUrlsToLinks(agentData.task.message.parts[0].text || 'No message content')}</p>
                   </div>
                 `;
               }
@@ -666,7 +831,7 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
                     <div class="accordion-body">
                       ${sentTaskMessage}
                       <div class="agent-message bg-${statusClass}">
-                        <p class="mb-0"><strong>Response:</strong> ${messageText}</p>
+                        <p class="mb-0"><strong>Response:</strong> ${convertUrlsToLinks(messageText)}</p>
                       </div>
                       <div class="agent-details">
                         <div class="row">
@@ -751,14 +916,14 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
                 sentTaskMessage = `
                   <div class="mt-3 mb-3 p-3 border border-info bg-dark">
                     <h6 class="text-info"><i class="fas fa-paper-plane me-2"></i>Host Agent Message:</h6>
-                    <p class="mb-0 text-light">${agentMessages[agentType]}</p>
+                    <p class="mb-0 text-light">${convertUrlsToLinks(agentMessages[agentType])}</p>
                   </div>
                 `;
               } else if (agentData.task && agentData.task.message && agentData.task.message.parts && agentData.task.message.parts[0]) {
                 sentTaskMessage = `
                   <div class="mt-3 mb-3 p-3 border border-info bg-dark">
                     <h6 class="text-info"><i class="fas fa-paper-plane me-2"></i>Host Agent Message:</h6>
-                    <p class="mb-0 text-light">${agentData.task.message.parts[0].text || 'No message content'}</p>
+                    <p class="mb-0 text-light">${convertUrlsToLinks(agentData.task.message.parts[0].text || 'No message content')}</p>
                   </div>
                 `;
               }
@@ -829,7 +994,7 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
                     <div class="accordion-body">
                       ${sentTaskMessage}
                       <div class="agent-message bg-${statusClass}">
-                        <p class="mb-0"><strong>Response:</strong> ${messageText}</p>
+                        <p class="mb-0"><strong>Response:</strong> ${convertUrlsToLinks(messageText)}</p>
                       </div>
                       <div class="agent-details">
                         <div class="row">
@@ -873,7 +1038,9 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       
       // Show the modal
       const modalElement = document.getElementById('webhookDetailsModal');
-      const modal = new bootstrap.Modal(modalElement);
+      const modal = new bootstrap.Modal(modalElement, {
+        backdrop: false  // Remove backdrop tint completely
+      });
       modal.show();
     } catch (error) {
       console.error('Error showing webhook details:', error);
@@ -887,12 +1054,35 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       return 'fab fa-github';
     } else if (agentType.includes('slack')) {
       return 'fab fa-slack';
-    } else if (agentType.includes('salesforce')) {
-      return 'fas fa-cloud';
     } else if (agentType.includes('host')) {
       return 'fas fa-server';
     }
     return 'fas fa-robot';
+  }
+  
+  // Convert URLs in text to clickable links
+  function convertUrlsToLinks(text) {
+    if (!text || typeof text !== 'string') return text;
+    
+    // First, convert newlines to HTML line breaks
+    text = text.replace(/\n/g, '<br>');
+    
+    // Convert double asterisks (**text**) to bold
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert single asterisks (*text*) to italics (but avoid conflicting with double asterisks)
+    text = text.replace(/(?<!\*)\*([^*]+?)\*(?!\*)/g, '<em>$1</em>');
+    
+    // URL regex pattern that matches http/https URLs
+    const urlRegex = /(https?:\/\/[^\s<>"']+)/gi;
+    
+    return text.replace(urlRegex, (url) => {
+      // Clean up any trailing punctuation that might not be part of the URL
+      const cleanUrl = url.replace(/[.,;:!?]$/, '');
+      const trailing = url.length > cleanUrl.length ? url.slice(-1) : '';
+      
+      return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-primary">${cleanUrl}</a>${trailing}`;
+    });
   }
   
   // Set up event listeners
@@ -1312,6 +1502,36 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       // Update statistics with correct status
       updateWebhookStats(webhookId, isProcessingSuccessful ? 'success' : 'failed');
       
+      // Auto-navigate to dashboard and show webhook details if processing was successful
+      if (isProcessingSuccessful) {
+        addTerminalLine(`Auto-navigating to webhook details...`);
+        
+        // Wait a moment for stats to update, then navigate to dashboard and show details
+        setTimeout(async () => {
+          // Navigate to dashboard
+          window.location.hash = '#dashboard';
+          
+          // Wait a bit more for dashboard to load, then try to find and show the webhook details
+          setTimeout(async () => {
+            // Refresh webhook stats to get the latest data
+            await fetchWebhookStats();
+            
+            // Find the webhook in the table and show its details
+            const webhookRows = document.querySelectorAll('tbody tr[data-webhook-id]');
+            for (const row of webhookRows) {
+              const rowWebhookId = row.getAttribute('data-webhook-id');
+              // Match either the full invocation ID or just the webhook ID part
+              if (rowWebhookId === result.invocationId || rowWebhookId.includes(webhookId)) {
+                // Click the row to show details
+                row.click();
+                addTerminalLine(`Showing details for webhook: ${result.invocationId}`);
+                break;
+              }
+            }
+          }, 1000);
+        }, 500);
+      }
+      
     } catch (error) {
       console.error('Error sending webhook:', error);
       
@@ -1452,7 +1672,7 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
   // Fetch agent logs from the API
   async function fetchAgentLogs(agentType, pollingId) {
     try {
-      const response = await fetch(`/api/logs/${agentType}`);
+      const response = await fetch(`${LOG_API_URL}/${agentType}`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch ${agentType} logs: ${response.statusText}`);
@@ -1684,6 +1904,7 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
     const webhookName = document.getElementById('webhookName');
     const webhookDescription = document.getElementById('webhookDescription');
     const webhookProcessor = document.getElementById('webhookProcessor');
+    const webhookPromptTemplate = document.getElementById('webhookPromptTemplate');
     const webhookConfig = document.getElementById('webhookConfig');
     
     if (webhook) {
@@ -1694,6 +1915,7 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       webhookName.value = webhook.name;
       webhookDescription.value = webhook.description || '';
       webhookProcessor.value = webhook.processor;
+      webhookPromptTemplate.value = webhook.promptTemplate || '';
       webhookConfig.value = JSON.stringify(webhook.processorConfig || {}, null, 2);
       btnDeleteWebhook.style.display = 'block';
     } else {
@@ -1704,6 +1926,7 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       webhookName.value = '';
       webhookDescription.value = '';
       webhookProcessor.value = 'meeting-transcript';
+      webhookPromptTemplate.value = '';
       webhookConfig.value = JSON.stringify({
         agents: [
           {
@@ -1717,9 +1940,9 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
             url: "http://localhost:41243"
           },
           {
-            id: "salesforce",
-            type: "salesforce",
-            url: "http://localhost:41244"
+            id: "bench",
+            type: "bench",
+            url: "http://localhost:41246"
           }
         ]
       }, null, 2);
@@ -1786,6 +2009,7 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
     const webhookName = document.getElementById('webhookName').value;
     const webhookDescription = document.getElementById('webhookDescription').value;
     const webhookProcessor = document.getElementById('webhookProcessor').value;
+    const webhookPromptTemplate = document.getElementById('webhookPromptTemplate').value;
     const webhookConfig = document.getElementById('webhookConfig').value;
     
     // Validate required fields
@@ -1811,6 +2035,11 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
       processor: webhookProcessor,
       processorConfig
     };
+    
+    // Only include promptTemplate if it has content
+    if (webhookPromptTemplate.trim()) {
+      webhook.promptTemplate = webhookPromptTemplate.trim();
+    }
     
     try {
       // Determine if this is a create or update operation
@@ -1934,6 +2163,44 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Ac
         }
       });
     });
+  }
+  
+  // Reload agent configurations
+  async function reloadAgentConfigurations() {
+    try {
+      console.log('Reloading agent configurations...');
+      
+      // Show a loading message in the terminal
+      addTerminalLine('Reloading agent configurations...');
+      
+      // Call the Host Agent reload endpoint
+      const response = await fetch(HOST_AGENT_RELOAD_URL);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reload agent configurations');
+      }
+      
+      const result = await response.json();
+      
+      // Display success message
+      addTerminalLine(`Successfully reloaded agent configurations. Available agents: ${result.agents.join(', ')}`);
+      
+      // Refresh the webhook list to show updated agents
+      fetchWebhooks();
+      
+      // If we're on the agent terminal view, refresh it
+      const hash = window.location.hash;
+      if (hash.startsWith('#agent-terminal')) {
+        const agentType = document.querySelector('.agent-item.active')?.getAttribute('data-agent');
+        if (agentType) {
+          updateAgentTerminal(agentType);
+        }
+      }
+    } catch (error) {
+      console.error('Error reloading agent configurations:', error);
+      addTerminalLine(`Error reloading agent configurations: ${error.message}`);
+    }
   }
   
   // Initialize the application

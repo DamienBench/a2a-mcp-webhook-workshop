@@ -1,6 +1,6 @@
 # Host A2A Agent
 
-The Host Agent is the central router in the multi-agent system, intelligently directing user requests to specialized agents for Slack, GitHub, and Salesforce.
+This is the main Host Agent that routes user requests to the appropriate specialized agents for Slack, GitHub, and Bench operations.
 
 ## Key Features
 
@@ -45,23 +45,24 @@ When finished, stop all agents:
 npm run stop:all
 ```
 
+## Agent Routing
+
+The Host Agent automatically routes requests based on keywords and context:
+
+- "slack" - Routes to Slack agent
+- "github" - Routes to GitHub agent  
+- "bench" - Routes to Bench agent
+
 ## Example Prompts
 
-The Host Agent works with a variety of request formats:
-
-### Simple Requests (Pattern-Matched)
-- "slack" - Routes to Slack agent
-- "github" - Routes to GitHub agent
-- "salesforce" - Routes to Salesforce agent
-
-### Service-Specific Requests
 - **Slack**: "Send a message to #general saying Hello world"
 - **GitHub**: "Create an issue in myrepo with title 'Bug Report'"
-- **Salesforce**: "Create a Contact with FirstName John LastName Doe"
+- **Bench**: "Provide technical assistance for the project"
 
-### Complex/Multi-Agent Requests (LLM-Routed)
-- "Send a Slack message and then create a GitHub issue about it"
-- "Find a Salesforce contact and post their email to Slack"
+### Multi-Agent Requests
+
+The Host Agent can also coordinate multiple agents:
+- "Send hi to Slack and create a GitHub issue about the message"
 
 ## Host Agent Architecture
 
@@ -75,8 +76,8 @@ The Host Agent uses a layered approach to routing:
 
 The Host Agent runs on port 41240 and connects to:
 - Slack Agent: port 41243
-- Salesforce Agent: port 41244
-- GitHub Agent: port 41245 
+- GitHub Agent: port 41245
+- Bench Agent: port 41246
 
 ## Agent Communication Flow
 
@@ -91,5 +92,5 @@ Agent logs are stored in:
 logs/host-agent.log
 logs/slack-agent.log
 logs/github-agent.log
-logs/salesforce-agent.log
+logs/bench-agent.log
 ``` 
