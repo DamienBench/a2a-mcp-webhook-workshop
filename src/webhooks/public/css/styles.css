@@ -178,6 +178,8 @@ body {
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
 }
 
 .agent-item:hover {
@@ -188,6 +190,17 @@ body {
   background-color: var(--primary-dark);
   border-left: 3px solid var(--primary);
   font-weight: bold;
+}
+
+.agent-item i {
+  opacity: 0.7;
+  width: 16px;
+  text-align: center;
+}
+
+.agent-item.active i {
+  opacity: 1;
+  color: var(--primary-light) !important;
 }
 
 .agent-status, .status-indicator {
@@ -203,11 +216,11 @@ body {
 }
 
 .status-inactive {
-  background-color: var(--danger);
+  background-color: var(--text-muted);
 }
 
 .navbar {
-  background-color: var(--darker-bg) !important;
+  background-color: var(--card-bg);
   border-bottom: 1px solid var(--border-color);
   padding: 0.5rem 1rem;
   z-index: 1030;
@@ -884,4 +897,84 @@ textarea, input, select {
 
 .agent-message br {
   line-height: 1.8;
+}
+
+/* Remote/Local Agent Status Indicators */
+.status-indicator {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+}
+
+.status-indicator.local {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.status-indicator.remote {
+  background-color: var(--warning-color);
+  color: white;
+}
+
+/* Agent header status badges */
+#agent-status-indicator {
+  min-width: 65px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+#agent-url {
+  max-width: none !important;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 350px;
+}
+
+/* Ensure badges don't get truncated */
+.badge {
+  max-width: none !important;
+}
+
+/* Agent header responsive design */
+@media (max-width: 768px) {
+  #agent-url {
+    max-width: 200px;
+  }
+  
+  .terminal-container .d-flex.justify-content-between {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .terminal-container .d-flex.justify-content-between > div:last-child {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+}
+
+/* Remote Agent Activity Styles */
+.remote-activity.timestamp {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.remote-activity.webhook-name {
+  color: var(--primary-light);
+  font-weight: bold;
+}
+
+.remote-activity.message-preview {
+  color: var(--terminal-text);
+  padding-left: 20px;
+  font-style: italic;
+  opacity: 0.8;
 } 

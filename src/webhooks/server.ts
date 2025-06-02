@@ -182,6 +182,9 @@ export class WebhookServer {
     // API endpoint for fetching agent logs
     this.app.get('/api/logs/:agent', this.getAgentLogs.bind(this));
     
+    // API endpoint for agent configuration
+    this.app.get('/api/agent-config', this.getAgentConfig.bind(this));
+    
     // API endpoints for webhook statistics
     this.app.get('/api/stats', this.getWebhookStats.bind(this));
     this.app.get('/api/stats/webhook/:invocationId', this.getWebhookInvocationDetails.bind(this));
@@ -615,6 +618,25 @@ export class WebhookServer {
   }
   
   /**
+   * API endpoint to get agent configuration
+   */
+  private async getAgentConfig(req: Request, res: Response, next: NextFunction): Promise<void | Response> {
+    try {
+      // Return the current agent URLs from environment variables
+      const agentConfig = {
+        HOST_AGENT_URL: process.env.HOST_AGENT_URL || 'http://localhost:41240',
+        SLACK_AGENT_URL: process.env.SLACK_AGENT_URL || 'http://localhost:41243',
+        GITHUB_AGENT_URL: process.env.GITHUB_AGENT_URL || 'http://localhost:41245',
+        BENCH_AGENT_URL: process.env.BENCH_AGENT_URL || 'http://localhost:41246'
+      };
+      
+      res.status(200).json(agentConfig);
+    } catch (err) {
+      next(err);
+    }
+  }
+  
+  /**
    * Record a webhook invocation and update statistics
    */
   private async recordWebhookInvocation(
@@ -970,7 +992,18 @@ export class WebhookServer {
   public async stop(): Promise<void> {
     if (this.server) {
       return new Promise((resolve, reject) => {
+        // Set a timeout to force close if graceful shutdown takes too long
+        const forceCloseTimeout = setTimeout(() => {
+          console.log('⚠️  Force closing webhook server after timeout');
+          this.server?.close();
+          this.server = null;
+          resolve();
+        }, 5000); // 5 second timeout
+
+        // Try graceful shutdown first
         this.server!.close((err) => {
+          clearTimeout(forceCloseTimeout);
+          
           if (err) {
             console.error('Error stopping webhook server:', err);
             reject(err);
@@ -980,6 +1013,9 @@ export class WebhookServer {
             resolve();
           }
         });
+
+        // Close all existing connections
+        this.server!.closeAllConnections?.();
       });
     }
   }

@@ -15,14 +15,10 @@
     "agent:github": "npx tsx src/agents/github/index.ts",
     "agent:bench": "npx tsx src/agents/bench/index.ts",
     "webhook:server": "tsx src/webhooks/index.ts",
-    "webhook:kill": "bash kill-webhook-server.sh",
-    "test:slack": "bash src/test/test-slack-agent.sh",
-    "test:github": "bash src/test/test-github-agent.sh",
-    "test:bench": "bash src/test/test-bench-agent.sh",
-    "test:host": "bash src/test/test-host-agent.sh",
-    "test:webhook": "bash src/test/test-webhook.sh",
-    "start:all": "bash src/test/start-all-agents.sh",
-    "stop:all": "bash src/test/stop-all-agents.sh",
+    "webhook:kill": "bash scripts/kill-webhook-server.sh",
+    "start:all": "bash scripts/start-all-agents.sh",
+    "stop:all": "bash scripts/stop-all-agents.sh",
+    "test:bench-connection": "bash scripts/test-bench-agent.sh",
     "build": "tsc"
   },
   "dependencies": {

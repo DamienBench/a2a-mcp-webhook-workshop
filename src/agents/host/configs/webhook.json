@@ -18,7 +18,7 @@
       {
         "id": "bench",
         "type": "bench",
-        "url": "http://localhost:41246"
+        "url": "http://ec2-54-183-197-218.us-west-1.compute.amazonaws.com:41246"
       }
     ],
     "parallel": true

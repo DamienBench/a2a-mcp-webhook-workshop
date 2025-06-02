@@ -207,7 +207,7 @@ async function initServer() {
       card: {
         name: "Bench Agent",
         description: "An agent can chat and answer questions related to coding, research, fact checking, and document analysis. Provides access to Bench's tools for writing code, analyzing materials, fact checking, web search, etc.",
-        url: `http://localhost:${port}`,
+        url: `http://ec2-54-183-197-218.us-west-1.compute.amazonaws.com:${port}`,
         provider: {
           organization: "A2A Samples",
           url: "https://github.com/google/a2a"
@@ -249,7 +249,7 @@ async function initServer() {
   );
   
   await server.start(Number(port));
-  console.log(`[BenchAgent] Server started on http://localhost:${port}`);
+  console.log(`[BenchAgent] Server started on http://ec2-54-183-197-218.us-west-1.compute.amazonaws.com:${port}`);
   console.log(`[BenchAgent] Press Ctrl+C to stop the server`);
 }
 

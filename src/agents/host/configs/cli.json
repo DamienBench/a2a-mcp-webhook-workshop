@@ -15,7 +15,7 @@
     {
       "id": "bench",
       "type": "bench",
-      "url": "http://localhost:41246"
+      "url": "http://ec2-54-183-197-218.us-west-1.compute.amazonaws.com:41246"
     }
   ],
   "promptTemplate": "You are analyzing user input to determine the appropriate agent to handle the request. The available agents are:\n\n{{agentCapabilities}}\n\nBased on the following user request, determine which agent would be most appropriate and generate a detailed task for that agent.\n\nRequest:\n---\n{{content}}\n---\n\nPlease provide a specific, detailed task for the selected agent."

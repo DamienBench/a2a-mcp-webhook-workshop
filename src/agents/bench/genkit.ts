@@ -26,7 +26,7 @@ export const ai = genkit({
       apiKey: process.env.GEMINI_API_KEY,
     }),
   ],
-  model: googleAI.model("gemini-1.5-pro"),
+  model: googleAI.model("gemini-2.0-flash"),
   promptDir: dirname(fileURLToPath(import.meta.url)),
 });
 

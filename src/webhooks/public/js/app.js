@@ -47,11 +47,19 @@ document.addEventListener('DOMContentLoaded', function() {
   const navLinks = document.querySelectorAll('.nav-link');
   
   // Agent URLs for terminal connections
-  const agentUrls = {
+  let agentUrls = {
     host: "http://localhost:41240",
-    slack: "http://localhost:41243",
+    slack: "http://localhost:41243", 
     github: "http://localhost:41245",
     bench: "http://localhost:41246"
+  };
+
+  // Track which agents are remote vs local
+  let agentStatus = {
+    host: { isLocal: true, url: "http://localhost:41240" },
+    slack: { isLocal: true, url: "http://localhost:41243" },
+    github: { isLocal: true, url: "http://localhost:41245" },
+    bench: { isLocal: true, url: "http://localhost:41246" }
   };
   
   // Default webhook test payload
@@ -101,10 +109,16 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Sn
     // Create dashboard first to ensure it exists
     createDashboardUI();
     
-    // Then set up other components
+    // Initialize agent detection first, then setup sidebar
+    initializeAgentDetection().then(() => {
+      // Update agent sidebar after detection completes
+      setupAgentSidebar();
+      console.log('Agent detection and sidebar setup complete');
+    });
+    
+    // Set up other components
     setupEventListeners();
     fetchWebhooks();
-    setupAgentSidebar();
     initializeTerminal();
     setupNavigation();
     updateServerStatus();
@@ -1570,7 +1584,25 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Sn
     // Update header info
     const agentName = agentType.charAt(0).toUpperCase() + agentType.slice(1) + ' Agent';
     selectedAgentName.textContent = agentName;
-    agentUrl.textContent = agentUrls[agentType] || 'N/A';
+    
+    const status = agentStatus[agentType];
+    const isLocal = status ? status.isLocal : true;
+    const agentUrl = status ? status.url : agentUrls[agentType];
+    
+    // Update status indicator
+    const statusIndicator = document.getElementById('agent-status-indicator');
+    if (statusIndicator) {
+      // Keep Bootstrap badge classes but add our status class
+      statusIndicator.className = `badge ${isLocal ? 'bg-success' : 'bg-warning'} me-2`;
+      statusIndicator.textContent = isLocal ? 'LOCAL' : 'REMOTE';
+    }
+    
+    // Update agent URL
+    const agentUrlElement = document.getElementById('agent-url');
+    if (agentUrlElement) {
+      agentUrlElement.className = 'badge bg-dark';
+      agentUrlElement.textContent = agentUrl || 'N/A';
+    }
     
     // Make sure terminal is visible first
     const terminalContainer = document.querySelector('.terminal-container');
@@ -1595,20 +1627,42 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Sn
     // Initialize content hash to empty string for new agent
     terminalContent.setAttribute('data-content-hash', '');
     
+    // Initialize activity hash for remote agents
+    terminalContent.setAttribute('data-activity-hash', '');
+    
     // Setup scroll event listener
     setupTerminalScrollListener();
     
-    // Add initial connecting message (without extra whitespace)
-    addTerminalLine(`Connecting to ${agentName}...`, false);
-    
-    // Short delay to ensure terminal is ready before fetching logs
-    setTimeout(() => {
-      // Fetch actual logs from the server
-      fetchAgentLogs(agentType, pollingId);
+    if (isLocal) {
+      // For local agents, show logs as before
+      addTerminalLine(`Connecting to ${agentName}...`, false);
       
-      // Start polling for log updates
-      startLogPolling(agentType, pollingId);
-    }, 100);
+      // Short delay to ensure terminal is ready before fetching logs
+      setTimeout(() => {
+        // Fetch actual logs from the server
+        fetchAgentLogs(agentType, pollingId);
+        
+        // Start polling for log updates
+        startLogPolling(agentType, pollingId);
+      }, 100);
+    } else {
+      // For remote agents, show different information
+      addTerminalLine(`Remote ${agentName} Information`, false);
+      addTerminalLine(`─────────────────────────────────────────`, false);
+      addTerminalLine(`URL: ${agentUrl}`, false);
+      addTerminalLine(`Status: External agent (not locally managed)`, false);
+      addTerminalLine(``, false);
+      addTerminalLine(`About Remote Agent Display:`, false);
+      addTerminalLine(`This agent is running remotely. Instead of showing logs,`, false);
+      addTerminalLine(`this view will display the messages and data being sent`, false);
+      addTerminalLine(`to the remote agent when tasks are delegated to it.`, false);
+      addTerminalLine(``, false);
+      addTerminalLine(`Recent Messages to Remote Agent:`, false);
+      addTerminalLine(`─────────────────────────────────────────`, false);
+      
+      // Start monitoring for messages sent to this remote agent
+      startRemoteAgentMonitoring(agentType, pollingId);
+    }
   }
   
   // Setup scroll event listener for terminal
@@ -1775,46 +1829,8 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Sn
   
   // Add a line to the terminal
   function addTerminalLine(text, shouldScroll = true) {
-    // First, let's pre-process the text to break JSON objects onto their own lines
-    const processedText = preProcessLogText(text);
-    
-    // If the text was split into multiple lines, add each one separately
-    if (processedText.includes('\n')) {
-      const lines = processedText.split('\n');
-      for (const lineText of lines) {
-        if (lineText.trim()) { // Skip empty lines
-          addSingleLine(lineText, false); // Don't scroll for each line
-        }
-      }
-      // Only scroll at the end if needed
-      if (shouldScroll) {
-        scrollToBottom();
-      }
-      return;
-    }
-    
-    // Otherwise, add the single line
-    addSingleLine(processedText, shouldScroll);
-  }
-  
-  // Process log text to add line breaks around JSON objects
-  function preProcessLogText(text) {
-    if (!text || typeof text !== 'string') return text;
-    
-    // Add a line break before standalone JSON objects (not inside quotes)
-    let processed = text;
-    
-    // Pattern: Find colons followed by opening braces or brackets that aren't in quotes
-    const colonPattern = /:\s*({|\[)/g;
-    processed = processed.replace(colonPattern, ':\n$1');
-    
-    // Also handle cases where JSON starts at beginning of line
-    if (processed.trim().startsWith('{') || processed.trim().startsWith('[')) {
-      const trimmed = processed.trim();
-      return trimmed;
-    }
-    
-    return processed;
+    // Add the single line without preprocessing
+    addSingleLine(text, shouldScroll);
   }
   
   // Add a single line to the terminal
@@ -1824,30 +1840,9 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Sn
     
     // Simple check if this line is a standalone JSON object
     const trimmed = text.trim();
-    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
-        (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-      try {
-        // Try to parse as JSON
-        const parsed = JSON.parse(trimmed);
-        
-        // Create pre/code elements for syntax highlighting
-        const pre = document.createElement('pre');
-        const code = document.createElement('code');
-        code.className = 'json';
-        code.textContent = JSON.stringify(parsed, null, 2);
-        pre.appendChild(code);
-        line.appendChild(pre);
-        
-        // Apply highlighting
-        hljs.highlightElement(code);
-      } catch (e) {
-        // If not valid JSON, just add as text
-        line.textContent = text;
-      }
-    } else {
-      // Regular text line
-      line.textContent = text;
-    }
+    
+    // Regular text line
+    line.textContent = text;
     
     terminalContent.appendChild(line);
     
@@ -2122,6 +2117,21 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Sn
     const agentItems = document.querySelectorAll('.agent-item');
     
     agentItems.forEach(item => {
+      const agentType = item.getAttribute('data-agent');
+      const status = agentStatus[agentType];
+      const isLocal = status ? status.isLocal : true;
+      
+      // Update the agent item to include the appropriate icon
+      const agentName = agentType.charAt(0).toUpperCase() + agentType.slice(1) + ' Agent';
+      const iconClass = isLocal ? 'fas fa-network-wired' : 'fas fa-globe';
+      
+      // Update the content with icon
+      item.innerHTML = `
+        <span class="agent-status status-active${agentType === 'host' ? ' pulse' : ''}"></span>
+        <i class="${iconClass} me-2" style="color: var(--text-muted);"></i>
+        <span>${agentName}</span>
+      `;
+      
       item.addEventListener('click', function() {
         // Remove active class from all items
         agentItems.forEach(agent => agent.classList.remove('active'));
@@ -2200,6 +2210,138 @@ Sarah: Perfect! Thank you for your time today. I look forward to working with Sn
     } catch (error) {
       console.error('Error reloading agent configurations:', error);
       addTerminalLine(`Error reloading agent configurations: ${error.message}`);
+    }
+  }
+  
+  // Initialize agent configuration detection
+  async function initializeAgentDetection() {
+    try {
+      // Fetch agent configurations from the webhook server
+      const response = await fetch('/api/agent-config');
+      if (response.ok) {
+        const config = await response.json();
+        
+        // Update agent URLs and status based on configuration
+        Object.keys(agentStatus).forEach(agentType => {
+          const envKey = `${agentType.toUpperCase()}_AGENT_URL`;
+          const configUrl = config[envKey];
+          
+          if (configUrl) {
+            agentUrls[agentType] = configUrl;
+            agentStatus[agentType].url = configUrl;
+            agentStatus[agentType].isLocal = configUrl.includes('localhost') || configUrl.includes('127.0.0.1');
+          }
+        });
+        
+        console.log('Agent configuration detected:', agentStatus);
+      } else {
+        console.log('Could not fetch agent config, using defaults');
+      }
+    } catch (error) {
+      console.error('Error detecting agent configuration:', error);
+    }
+  }
+  
+  // Start monitoring for messages sent to remote agents
+  function startRemoteAgentMonitoring(agentType, pollingId) {
+    const pollingInterval = 5000; // 5 seconds
+    
+    // Initial fetch
+    fetchRemoteAgentActivity(agentType, pollingId);
+    
+    const intervalId = setInterval(() => {
+      // Check if we're still on the same agent view
+      if (terminalContent.getAttribute('data-polling-id') !== pollingId.toString()) {
+        console.log('Terminal switched to a different agent, stopping remote monitoring');
+        clearInterval(intervalId);
+        return;
+      }
+      
+      // Fetch updated activity
+      fetchRemoteAgentActivity(agentType, pollingId);
+    }, pollingInterval);
+    
+    // Store the interval ID
+    terminalContent.setAttribute('data-interval-id', intervalId);
+  }
+
+  // Fetch activity/messages sent to remote agents  
+  async function fetchRemoteAgentActivity(agentType, pollingId) {
+    try {
+      // For now, we'll show webhook invocations that might have involved this agent
+      const response = await fetch(STATS_API_URL);
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      
+      // Check if we're still on the same agent view
+      if (terminalContent.getAttribute('data-polling-id') !== pollingId.toString()) {
+        return;
+      }
+      
+      // Filter recent webhooks that might have involved this agent
+      const recentActivity = data.recentWebhooks
+        .filter(webhook => {
+          // Check if this webhook involved the agent type we're monitoring
+          return webhook.details && 
+                 webhook.details.agentMessages && 
+                 webhook.details.agentMessages[agentType];
+        })
+        .slice(0, 10); // Show last 10 activities
+      
+      // Create a unique key for the current activity state
+      const activityHash = recentActivity.map(w => `${w.id}-${w.timestamp}`).join('|');
+      const currentActivityHash = terminalContent.getAttribute('data-activity-hash') || '';
+      
+      // Only update if activity has changed
+      if (currentActivityHash !== activityHash) {
+        // Clear all existing remote activity lines
+        const existingActivity = terminalContent.querySelectorAll('.remote-activity');
+        existingActivity.forEach(el => el.remove());
+        
+        if (recentActivity.length === 0) {
+          const noActivityLine = document.createElement('div');
+          noActivityLine.className = 'terminal-line remote-activity';
+          noActivityLine.textContent = '(No recent activity to this remote agent)';
+          terminalContent.appendChild(noActivityLine);
+        } else {
+          recentActivity.forEach((webhook, index) => {
+            const timestamp = new Date(webhook.timestamp).toLocaleString();
+            const message = webhook.details.agentMessages[agentType];
+            
+            // Add activity entry
+            const activityLine = document.createElement('div');
+            activityLine.className = 'terminal-line remote-activity';
+            activityLine.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="webhook-name">${webhook.name}</span>`;
+            terminalContent.appendChild(activityLine);
+            
+            // Add message preview  
+            const messageLine = document.createElement('div');
+            messageLine.className = 'terminal-line remote-activity message-preview';
+            messageLine.textContent = `  → ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`;
+            terminalContent.appendChild(messageLine);
+            
+            // Add spacing between entries
+            if (index < recentActivity.length - 1) {
+              const spaceLine = document.createElement('div');
+              spaceLine.className = 'terminal-line remote-activity';
+              spaceLine.textContent = '';
+              terminalContent.appendChild(spaceLine);
+            }
+          });
+        }
+        
+        // Store the current activity hash
+        terminalContent.setAttribute('data-activity-hash', activityHash);
+        
+        // Scroll to bottom if auto-scroll is enabled
+        const shouldAutoScroll = terminalContent.getAttribute('data-auto-scroll') === 'true';
+        if (shouldAutoScroll) {
+          setTimeout(scrollToBottom, 50);
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching remote agent activity for ${agentType}:`, error);
     }
   }
   
