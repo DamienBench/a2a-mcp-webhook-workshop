@@ -16,6 +16,12 @@ if (!process.env.GEMINI_API_KEY) {
   process.exit(1);
 }
 
+// Check if GitHub repository is set
+if (!process.env.GITHUB_REPOSITORY) {  
+  console.error("GITHUB_REPOSITORY environment variable not set.")
+  process.exit(1);
+}
+
 /**
  * GitHub agent that can create issues
  */
@@ -59,7 +65,7 @@ async function* githubAgent({
     );
     
     // Initialize tool usage variables
-    const defaultRepo = process.env.GITHUB_REPOSITORY || "DamienBench/a2a-mcp-webhook-workshop";
+    const defaultRepo = process.env.GITHUB_REPOSITORY;
     let repository = defaultRepo; // Use actual repo instead of owner/repo
     let title = "";
     let body = "";
@@ -189,12 +195,14 @@ async function runTest(testMessage: string) {
  */
 async function initServer() {
   const port = process.env.GITHUB_AGENT_PORT || 41245;
+  const githubRepo = process.env.GITHUB_REPOSITORY;
+  
   const server = new A2AServer(
     githubAgent,
     {
       card: {
         name: "GitHub Agent",
-        description: "An agent that can create GitHub issues in the repo https://github.com/DamienBench/a2a-mcp-webhook-workshop",
+        description: `An agent that can create GitHub issues in the repo https://github.com/${githubRepo}`,
         url: `http://localhost:${port}`,
         provider: {
           organization: "A2A Samples",
@@ -216,7 +224,7 @@ async function initServer() {
             tags: ["github", "issues", "development"],
             examples: [
               "Create an issue with title 'Fix bug in login page'",
-              "Create an issue in myorg/myrepo titled 'Update dependencies'",
+              `Create an issue in ${githubRepo} titled 'Update dependencies'`,
               "Create a GitHub issue with description 'The site is broken on mobile devices'"
             ],
           }

@@ -20,9 +20,10 @@ Ensure you have the MCP Server URL configured in your `.env` file:
 
 ```
 MCP_SERVER_URL=your_zapier_mcp_server_url
+GITHUB_REPOSITORY=owner/repository
 ```
 
-The Zapier MCP Server handles the GitHub integration using the "Create Issue" tool.
+The Zapier MCP Server handles the GitHub integration using the "Create Issue" tool. The `GITHUB_REPOSITORY` environment variable specifies which repository issues will be created in (defaults to `DamienBench/a2a-mcp-webhook-workshop` if not set).
 
 ## Usage
 

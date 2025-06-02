@@ -20,6 +20,11 @@ if (!process.env.GEMINI_API_KEY) {
   process.exit(1);
 }
 
+if (!process.env.GITHUB_REPOSITORY) {
+  console.error("GITHUB_REPOSITORY environment variable is required");
+  process.exit(1);
+}
+
 // Initialize the Genkit AI client
 export const ai = genkit({
   plugins: [
@@ -52,7 +57,7 @@ export const githubCreateIssue = ai.defineTool(
     const { title, body, repository, ...restParams } = inputParams;
     
     // Use environment variable for repository if available, otherwise fall back to provided or default
-    const defaultRepo = process.env.GITHUB_REPOSITORY || "DamienBench/a2a-mcp-webhook-workshop";
+    const defaultRepo = process.env.GITHUB_REPOSITORY;
     const repo = repository && repository !== "owner/repo" ? repository : defaultRepo;
     
     // MCP requires 'instructions' field

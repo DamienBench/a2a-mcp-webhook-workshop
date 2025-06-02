@@ -190,6 +190,9 @@ This workshop requires the following Zapier MCP tools to be configured in your Z
    
    # Slack Configuration
    SLACK_CHANNEL=#test-slack-damien
+   
+   # GitHub Configuration  
+   GITHUB_REPOSITORY=DamienBench/a2a-mcp-webhook-workshop
    ```
 
 Note: The Bench agent is configured to run remotely at the specified URL. Local agents (Host, Slack, GitHub) will be started automatically, while the remote Bench agent is accessed over HTTP.
