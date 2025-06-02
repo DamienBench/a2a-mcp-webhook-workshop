@@ -187,6 +187,9 @@ This workshop requires the following Zapier MCP tools to be configured in your Z
    SLACK_AGENT_URL=http://localhost:41243
    GITHUB_AGENT_URL=http://localhost:41245
    BENCH_AGENT_URL=http://ec2-54-183-197-218.us-west-1.compute.amazonaws.com:41246
+   
+   # Slack Configuration
+   SLACK_CHANNEL=#test-slack-damien
    ```
 
 Note: The Bench agent is configured to run remotely at the specified URL. Local agents (Host, Slack, GitHub) will be started automatically, while the remote Bench agent is accessed over HTTP.
@@ -195,21 +198,19 @@ Note: The Bench agent is configured to run remotely at the specified URL. Local 
 
 The webhook server provides a web-based interface for monitoring and debugging the multi-agent system. It includes a dashboard for real-time stats, webhook testing tools, and agent log viewing.
 
-### Running the Webhook Server
+### Running the Application
 
-The webhook server is automatically started when you run all agents:
+The agents and webhook server is automatically started when you run this script
 
 ```bash
 npm run start:all
 ```
 
-To run the webhook server independently:
+### Stop all agents and services:
 
 ```bash
-npm run webhook:server
+npm run stop:all
 ```
-
-The server runs on port 3000 by default and can be configured via the `PORT` or `WEBHOOK_PORT` environment variables.
 
 ### Accessing the Web UI
 
@@ -218,6 +219,8 @@ Once the webhook server is running, access the web dashboard at:
 ```
 http://localhost:3000
 ```
+
+`Check the startup logs in the logs folder for errors if anything is not working`
 
 ### Web UI Features
 
@@ -241,29 +244,7 @@ The server provides REST API endpoints:
 - `GET /api/logs/:agent` - Get logs for a specific agent
 - `GET /api/stats` - Get webhook processing statistics
 
-### Stopping the Webhook Server
-
-To stop the webhook server:
-
-```bash
-npm run webhook:kill
-```
-
-Or use the general stop command to stop all services:
-
-```bash
-npm run stop:all
-```
-
-## Running the Agents
-
-### Start All Agents
-
-```bash
-npm run start:all
-```
-
-This starts:
+## Agents
 - Host Agent on port 41240
 - Slack Agent on port 41243
 - GitHub Agent on port 41245
@@ -273,71 +254,9 @@ This starts:
 
 All local agents run in the background, with logs stored in the `logs/` directory. The web UI will show different indicators for local vs remote agents.
 
-### Chat with the Host Agent
-
-After starting all agents, you can interact with the system through the Host Agent:
-
-```bash
-npm run a2a:cli
-```
-
-The Host Agent intelligently routes your requests to the appropriate specialized agent:
-
-Example prompts:
-- **Slack**: "Send a message to the #general channel saying Hello world"
-- **GitHub**: "Create a GitHub issue in myrepo with title 'Bug Report' and description 'Found a critical bug'"
-- **Bench**: "Provide technical assistance for the project"
-- **Multiple Services**: "Send hi to Slack and create a GitHub issue about the message"
-
-**Note**: Slack and GitHub functionality requires the corresponding Zapier MCP tools to be configured (Send Channel Message and Create Issue respectively).
-
-### Stop All Agents
-
-To stop all running agents:
-
-```bash
-npm run stop:all
-```
-
-### Run Individual Agents
-
-You can also run and test local agents individually:
-
-```bash
-# Run Host agent only
-npm run host:agent
-
-# Run Slack agent with direct message
-npm run agent:slack "Send a message to #general saying Hello"
-
-# Run GitHub agent with direct message
-npm run agent:github "Create an issue in repo/name with title 'Test'"
-```
-
-**Note**: The Bench agent runs remotely and cannot be started locally. To interact with it directly, use the Host agent which will delegate tasks to the remote Bench agent automatically.
-
-## Testing
-
-Individual local agent tests:
-
-```bash
-npm run test:slack
-npm run test:github
-```
-
-Test the Host Agent with all sub-agents (including remote Bench agent):
-
-```bash
-npm run test:host
-```
-
-**Remote Bench Agent**: The Bench agent connectivity can be tested through the Host agent or by using the provided test script:
-
-```bash
-npm run test:bench
-```
-
 ## Troubleshooting
+
+- View the logs of each agent and webhook server in the logs folder
 
 ### Common Issues
 
@@ -367,14 +286,6 @@ npm run test:bench
     - Check network connectivity to remote server
     - Ensure remote agent is running and accessible
     - Test connectivity with `npm run test:bench`
-
-### Debugging
-
-- Check log files in the `logs/` directory for local agents
-- Use the Web UI to monitor both local and remote agent activity
-- Test agents individually before testing the entire system
-- Verify your `.env` file has the correct values
-- For remote agents, check network connectivity and firewall settings
 
 ## Resources
 

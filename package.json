@@ -17,7 +17,6 @@
     "webhook:kill": "bash scripts/kill-webhook-server.sh",
     "start:all": "bash scripts/start-all-agents.sh",
     "stop:all": "bash scripts/stop-all-agents.sh",
-    "test:bench-connection": "bash scripts/test-bench-agent.sh",
     "build": "tsc"
   },
   "dependencies": {

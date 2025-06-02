@@ -151,7 +151,7 @@ These messages are captured during webhook processing and stored with each invoc
 - [Host Agent](../agents/host/README.md)
 - [Slack Agent](../agents/slack/README.md)
 - [GitHub Agent](../agents/github/README.md)
-- [Bench Agent](../agents/bench/README.md)
+- [Bench Agent (Remote)](../agents/bench/README.md)
 
 ## Component Documentation
 
@@ -159,4 +159,4 @@ Each component has its own detailed documentation:
 - [Host Agent](../agents/host/README.md)
 - [Slack Agent](../agents/slack/README.md)
 - [GitHub Agent](../agents/github/README.md)
-- [Bench Agent](../agents/bench/README.md) 
+- [Bench Agent (Remote)](../agents/bench/README.md) 

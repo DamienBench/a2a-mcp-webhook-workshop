@@ -60,7 +60,7 @@ async function* slackAgent({
     
     // Initialize tool usage variables
     let success = false;
-    let channel = "#test-slack-damien"; // Default channel
+    let channel = process.env.SLACK_CHANNEL || "#general"; // Default channel from env var
     let message = "";
     let permalink = null;
     
@@ -171,12 +171,14 @@ async function runTest(testMessage: string) {
  */
 async function initServer() {
   const port = process.env.SLACK_AGENT_PORT || 41243;
+  const slackChannel = process.env.SLACK_CHANNEL || "#general";
+  
   const server = new A2AServer(
     slackAgent,
     {
       card: {
         name: "SlackAgent",
-        description: "A Slack messaging agent using MCP that sends messages to only the #test-slack-damien Slack channel.",
+        description: `A Slack messaging agent using MCP that sends messages to the ${slackChannel} Slack channel.`,
         url: `http://localhost:${port}`,
         provider: {
           organization: "A2A Samples",
@@ -194,11 +196,11 @@ async function initServer() {
           {
             id: "slack_messaging",
             name: "Slack Messaging",
-            description: "Sends messages to only the #test-slack-damien Slack channel.",
+            description: `Sends messages to the ${slackChannel} Slack channel.`,
             tags: ["slack", "messaging", "communication"],
             examples: [
-              "Send a message to #test-slack-damien saying Hello, team!",
-              "Post in #test-slack-damien: Don't forget the team meeting at 2pm",
+              `Send a message to ${slackChannel} saying Hello, team!`,
+              `Post in ${slackChannel}: Don't forget the team meeting at 2pm`,
             ],
           },
         ],
@@ -226,4 +228,4 @@ async function main() {
 }
 
 // Run the main function
-main().catch(console.error); 
+main().catch(console.error);
