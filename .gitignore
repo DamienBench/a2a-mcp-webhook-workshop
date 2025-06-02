@@ -5,7 +5,7 @@ node_modules
 *.log
 
 dist
-src/test/output
+logs
 .env
 .DS_Store
 *.pid
