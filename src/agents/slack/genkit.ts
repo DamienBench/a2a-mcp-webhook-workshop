@@ -63,34 +63,92 @@ export const slackSendChannelMessage = ai.defineTool(
       const result = await sendSlackMessage(mcpArgs);
       console.log("[SlackAgent MCP] Result:", JSON.stringify(result, null, 2));
       
+      // Check if the MCP response indicates an error
+      if (result?.isError === true) {
+        console.error("[SlackAgent MCP] MCP server returned error response");
+        return { 
+          success: false, 
+          channel, 
+          message,
+          error: "MCP server returned error response"
+        };
+      }
+      
       // Parse the MCP response
       let parsedResult = null;
       let permalink = null;
+      let actualSuccess = false;
       
       if (result?.content && result.content[0]?.text) {
         try {
           parsedResult = JSON.parse(result.content[0].text);
           console.log("[SlackAgent MCP] Parsed result:", JSON.stringify(parsedResult, null, 2));
           
+          // Check if the parsed result indicates an error
+          if (parsedResult?.status === "error") {
+            console.error("[SlackAgent MCP] Parsed result indicates error:", parsedResult.message);
+            return { 
+              success: false, 
+              channel, 
+              message,
+              error: parsedResult.message || "Unknown error from Slack"
+            };
+          }
+          
+          // Check if we got an empty array (indicates failure)
+          if (Array.isArray(parsedResult) && parsedResult.length === 0) {
+            console.error("[SlackAgent MCP] Received empty array, indicating failure");
+            return { 
+              success: false, 
+              channel, 
+              message,
+              error: "Slack message sending failed - empty response"
+            };
+          }
+          
+          // Look for success indicators in the response
           if (parsedResult?.results?.[0]?.message?.permalink) {
             permalink = parsedResult.results[0].message.permalink;
+            actualSuccess = true;
+          } else if (parsedResult?.status === "success" || parsedResult?.message) {
+            // Some success response format
+            actualSuccess = true;
+          } else if (typeof parsedResult === 'string' && parsedResult.length > 0) {
+            // Non-empty string response is considered success
+            actualSuccess = true;
           }
         } catch (error) {
           console.error("[SlackAgent MCP] Error parsing response:", error);
+          return { 
+            success: false, 
+            channel, 
+            message,
+            error: "Failed to parse MCP response"
+          };
         }
+      } else {
+        console.error("[SlackAgent MCP] No valid content in MCP response");
+        return { 
+          success: false, 
+          channel, 
+          message,
+          error: "No valid content in MCP response"
+        };
       }
       
       return { 
-        success: true, 
+        success: actualSuccess, 
         channel, 
         message,
-        permalink
+        permalink,
+        error: actualSuccess ? undefined : "Unable to confirm message was sent successfully"
       };
     } catch (error) {
       console.error("[SlackAgent MCP] Error sending message:", error);
       return { 
         success: false, 
         channel, 
+        message,
         error: error.message 
       };
     }

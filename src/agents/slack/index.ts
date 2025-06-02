@@ -63,6 +63,7 @@ async function* slackAgent({
     let channel = process.env.SLACK_CHANNEL || "#general"; // Default channel from env var
     let message = "";
     let permalink = null;
+    let errorMessage = null;
     
     // Parse response to extract tool usage and results
     if (response.request?.messages) {
@@ -86,10 +87,15 @@ async function* slackAgent({
               const output = item.toolResponse.output as { 
                 success: boolean; 
                 permalink?: string | null;
+                error?: string;
               };
               success = output.success === true;
               permalink = output.permalink || null;
+              errorMessage = output.error || null;
               console.log("[SlackAgent] Message success:", success, "permalink:", permalink);
+              if (errorMessage) {
+                console.log("[SlackAgent] Error message:", errorMessage);
+              }
             }
           }
         }
@@ -104,7 +110,12 @@ async function* slackAgent({
         responseText += `\n\nView it here: ${permalink}`;
       }
     } else {
-      responseText = "I couldn't send your message to Slack. Please try again.";
+      responseText = `I couldn't send your message to Slack`;
+      if (errorMessage) {
+        responseText += `: ${errorMessage}`;
+      } else {
+        responseText += ". Please try again.";
+      }
     }
     
     // Yield the completed status with the agent's response

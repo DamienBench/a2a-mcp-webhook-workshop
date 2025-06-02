@@ -34,11 +34,11 @@ export async function sendSlackMessage(args: any) {
       CallToolResultSchema
     );
     
-    console.log("[Slack MCP] Received response:", response ? "success" : "null");
+    console.log("[Slack MCP] Raw response:", JSON.stringify(response, null, 2));
     
-    // Return a default safe response if null
+    // Validate the response more thoroughly
     if (!response) {
-      console.warn("[Slack MCP] Received null response, returning safe default");
+      console.error("[Slack MCP] Received null response from MCP server");
       return {
         tool: "slack_send_channel_message",
         content: [{
@@ -48,9 +48,75 @@ export async function sendSlackMessage(args: any) {
             message: "No response received from MCP server",
             results: []
           })
-        }]
+        }],
+        isError: true
       };
     }
+
+    // Check if response contains valid content
+    if (!response.content || !Array.isArray(response.content) || response.content.length === 0) {
+      console.error("[Slack MCP] Response missing content or content is empty");
+      return {
+        tool: "slack_send_channel_message", 
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            status: "error",
+            message: "MCP server returned empty or invalid content",
+            results: []
+          })
+        }],
+        isError: true
+      };
+    }
+
+    // Check if the first content item has text
+    const firstContent = response.content[0];
+    if (!firstContent || !firstContent.text) {
+      console.error("[Slack MCP] Response content missing text field");
+      return {
+        tool: "slack_send_channel_message",
+        content: [{
+          type: "text", 
+          text: JSON.stringify({
+            status: "error",
+            message: "MCP server returned content without text",
+            results: []
+          })
+        }],
+        isError: true
+      };
+    }
+
+    // Try to parse the text content
+    let parsedContent;
+    try {
+      parsedContent = JSON.parse(firstContent.text);
+    } catch (parseError) {
+      // If it's not JSON, treat the raw text as the response
+      console.log("[Slack MCP] Response text is not JSON, treating as raw text:", firstContent.text);
+      parsedContent = { message: firstContent.text };
+    }
+
+    // Check if we received an empty array (which indicates failure)
+    if (Array.isArray(parsedContent) && parsedContent.length === 0) {
+      console.error("[Slack MCP] Response content is empty array, indicating failure");
+      return {
+        tool: "slack_send_channel_message",
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            status: "error", 
+            message: "Slack message sending failed - empty response",
+            results: []
+          })
+        }],
+        isError: true
+      };
+    }
+
+    // Log successful response
+    console.log("[Slack MCP] Received valid response:", response ? "success" : "null");
     
     return response;
   } catch (error) {
@@ -65,7 +131,8 @@ export async function sendSlackMessage(args: any) {
           message: error.message || "Unknown error",
           results: []
         })
-      }]
+      }],
+      isError: true
     };
   }
 } 
