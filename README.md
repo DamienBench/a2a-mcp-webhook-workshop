@@ -153,6 +153,22 @@ graph LR
 - A free Gemini API key
 - A Slack workspace with admin privileges (for testing)
 
+### Required Zapier MCP Tools
+
+This workshop requires the following Zapier MCP tools to be configured in your Zapier account:
+
+**Slack Integration:**
+- **Send Channel Message** - Enables the Slack Agent to send messages to Slack channels
+
+**GitHub Integration:**  
+- **Create Issue** - Enables the GitHub Agent to create issues in GitHub repositories
+
+**Setup Instructions:**
+1. Log into your free [Zapier MCP account](https://zapier.com/mcp)
+2. Navigate to the [Zapier MCP tools section](https://mcp.zapier.com/mcp/servers)
+3. Configure the above tools with your Slack workspace and GitHub account
+4. Copy the SSE (not the streamable http) MCP server URL from Zapier for use in your `.env` file
+
 ## Getting Started
 
 1. Clone the repository
@@ -269,9 +285,11 @@ The Host Agent intelligently routes your requests to the appropriate specialized
 
 Example prompts:
 - **Slack**: "Send a message to the #general channel saying Hello world"
-- **GitHub**: "Create a GitHub issue in myrepo with title 'Bug Report'"
+- **GitHub**: "Create a GitHub issue in myrepo with title 'Bug Report' and description 'Found a critical bug'"
 - **Bench**: "Provide technical assistance for the project"
 - **Multiple Services**: "Send hi to Slack and create a GitHub issue about the message"
+
+**Note**: Slack and GitHub functionality requires the corresponding Zapier MCP tools to be configured (Send Channel Message and Create Issue respectively).
 
 ### Stop All Agents
 
@@ -326,6 +344,13 @@ npm run test:bench
 - **Zapier webhook configuration issues**
   - Problem: Webhook not receiving data
   - Solution: Verify webhook URL in `.env`
+
+- **Missing or misconfigured Zapier MCP tools**
+  - Problem: "Tool not found" or "Integration not available" errors
+  - Solution: 
+    - Ensure **Send Channel Message** (Slack) and **Create Issue** (GitHub) tools are configured in Zapier
+    - Verify your Slack workspace and GitHub account are properly connected in Zapier
+    - Check that the MCP server URL in `.env` is correct and active
 
 - **Gemini API key problems**
   - Problem: "API key not valid" errors
