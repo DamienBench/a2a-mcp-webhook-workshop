@@ -39,6 +39,10 @@ Each agent connects to its respective service via the appropriate protocol, allo
 │             ├────►│ Bench Agent   │──► Bench API
 └─────────────┘     │ (Port 41246)  │
                     └───────────────┘
+                    ┌───────────────┐
+                    │ Webhook Server│──► Web UI Dashboard
+                    │ (Port 3000)   │    Monitoring & Debug
+                    └───────────────┘
 ```
 
 ### System Flow Diagram
@@ -46,6 +50,7 @@ Each agent connects to its respective service via the appropriate protocol, allo
 ```mermaid
 graph TD
     User[User] -->|Requests| CLI[CLI Interface]
+    User -->|Monitors| WebUI[Web UI Dashboard]
     CLI -->|Tasks| Host[Host Agent]
     Host -->|Delegates| SlackAgent[Slack Agent]
     Host -->|Delegates| GitHubAgent[GitHub Agent]
@@ -58,13 +63,19 @@ graph TD
     Zapier -->|API| SlackAPI[Slack API]
     Zapier -->|API| GitHubAPI[GitHub API]
     
+    WebhookServer[Webhook Server] -->|Provides| WebUI
+    WebhookServer -->|Monitors| Host
+    WebhookServer -->|Receives Webhooks| Zapier
+    
     class Host,SlackAgent,GitHubAgent,BenchAgent agent;
     class Zapier middleware;
     class SlackAPI,GitHubAPI,BenchAPI external;
+    class WebhookServer,WebUI monitoring;
     
     classDef agent fill:#d070d0,stroke:#333,stroke-width:2px,color:#fff;
     classDef middleware fill:#7070d0,stroke:#333,stroke-width:2px,color:#fff;
     classDef external fill:#70b070,stroke:#333,stroke-width:2px,color:#fff;
+    classDef monitoring fill:#ff7070,stroke:#333,stroke-width:2px,color:#fff;
 ```
 
 ### Slack Agent Flow
@@ -137,8 +148,73 @@ graph LR
 3. Configure your `.env` file with:
    ```
    MCP_SERVER_URL=your_zapier_mcp_server_url
+   BENCH_API_KEY=your_bench_api_key
    GEMINI_API_KEY=your_gemini_api_key
    ```
+
+## Webhook Server & Web UI
+
+The webhook server provides a web-based interface for monitoring and debugging the multi-agent system. It includes a dashboard for real-time stats, webhook testing tools, and agent log viewing.
+
+### Running the Webhook Server
+
+The webhook server is automatically started when you run all agents:
+
+```bash
+npm run start:all
+```
+
+To run the webhook server independently:
+
+```bash
+npm run webhook:server
+```
+
+The server runs on port 3000 by default and can be configured via the `PORT` or `WEBHOOK_PORT` environment variables.
+
+### Accessing the Web UI
+
+Once the webhook server is running, access the web dashboard at:
+
+```
+http://localhost:3000
+```
+
+### Web UI Features
+
+The dashboard provides several key features:
+
+- **Real-time Statistics**: Monitor webhook processing stats and agent activity
+- **Recent Invocations**: View recent webhook calls with status and details
+- **Agent Status**: Check the current status of all agents in the system
+- **Host Agent Messages**: Debug messages sent from the Host Agent to sub-agents
+- **Webhook Testing**: Send test data to specific webhooks and view responses
+- **Agent Logs**: Real-time log viewer for all agents with syntax highlighting
+- **JSON Formatting**: Format and validate webhook payloads
+
+### Webhook Endpoints
+
+The server provides REST API endpoints:
+
+- `POST /webhook/:id` - Receive webhook data for a specific webhook ID
+- `GET /api/webhooks` - List all webhook configurations
+- `POST /api/test/webhook/:id` - Test a webhook configuration
+- `GET /api/logs/:agent` - Get logs for a specific agent
+- `GET /api/stats` - Get webhook processing statistics
+
+### Stopping the Webhook Server
+
+To stop the webhook server:
+
+```bash
+npm run webhook:kill
+```
+
+Or use the general stop command to stop all services:
+
+```bash
+npm run stop:all
+```
 
 ## Running the Agents
 
@@ -153,6 +229,7 @@ This starts:
 - Slack Agent on port 41243
 - GitHub Agent on port 41245
 - Bench Agent on port 41246
+- Webhook Server on port 3000
 
 All agents run in the background, with logs stored in the `logs/` directory.
 
