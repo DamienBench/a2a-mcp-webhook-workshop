@@ -67,8 +67,7 @@ graph TD
     Zapier -->|API| GitHubAPI[GitHub API]
     
     WebhookServer[Webhook Server] -->|Provides| WebUI
-    WebhookServer -->|Monitors| Host
-    WebhookServer -->|Receives Webhooks| Zapier
+    WebhookServer -->|Receives Webhooks| Host
     
     class Host,SlackAgent,GitHubAgent local;
     class BenchAgent remote;
@@ -91,17 +90,17 @@ sequenceDiagram
     participant Host as Host Agent
     participant Slack as Slack Agent
     participant MCP as MCP Layer
-    participant Zapier as Zapier
+    participant Zapier as Zapier MCP Server
     participant SlackAPI as Slack API
     
     User->>Host: "Send a message to #general"
     Host->>Slack: Delegate task
     Slack->>Slack: Parse channel and message
-    Slack->>MCP: Format MCP request
-    MCP->>Zapier: POST webhook data
+    Slack->>MCP: Format MCP tool call
+    MCP->>Zapier: Call slack_send_channel_message tool
     Zapier->>SlackAPI: Send message
     SlackAPI-->>Zapier: Confirm sent
-    Zapier-->>MCP: Return result
+    Zapier-->>MCP: Return tool result
     MCP-->>Slack: Structure response
     Slack-->>Host: Report success
     Host-->>User: "Message sent successfully"
@@ -125,24 +124,28 @@ This approach allows you to:
 
 ```mermaid
 graph LR
-    AI[AI Model] -->|Requests| MCP[MCP Layer]
-    MCP -->|API Calls| Services[External Services]
-    Services -->|Responses| MCP
+    AI[AI Model] -->|Tool Calls| MCP[MCP Layer]
+    MCP -->|MCP Protocol| Zapier[Zapier MCP Server]
+    Zapier -->|API Calls| Services[External Services]
+    Services -->|Responses| Zapier
+    Zapier -->|Tool Results| MCP
     MCP -->|Structured Data| AI
     
     subgraph "External Services"
-        Slack[Slack]
-        GitHub[GitHub]
-        Database[Databases]
+        Slack[Slack API]
+        GitHub[GitHub API]
+        Other[Other APIs]
     end
     
-    MCP --> Slack
-    MCP --> GitHub
-    MCP --> Database
+    Zapier --> Slack
+    Zapier --> GitHub
+    Zapier --> Other
     
     class AI,MCP connector;
+    class Zapier middleware;
     
     classDef connector fill:#7070d0,stroke:#333,stroke-width:2px,color:#fff;
+    classDef middleware fill:#9070d0,stroke:#333,stroke-width:2px,color:#fff;
 ```
 
 ## Prerequisites
