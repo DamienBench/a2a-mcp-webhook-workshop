@@ -11,6 +11,7 @@ This workshop demonstrates a multi-agent system with:
 - **GitHub Agent**: Create issues, PRs, and manage repositories (local)
 - **Bench Agent**: Provides technical assistance and project insights (remote)
 - **Webhook Server**: HTTP server that processes incoming webhooks and delegates to appropriate agents
+- **Admin WebUI**: WebUI for viewing Agent logs, Webhooks and testing the webhook
 
 ## Overview
 
